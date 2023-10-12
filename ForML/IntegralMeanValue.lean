@@ -95,3 +95,4 @@ lemma exists_mul_eq_intervalIntegral {f g : ℝ → ℝ} {a b : ℝ} (hab : a < 
     . exact Set.mem_of_mem_of_subset hc.left hmM
     . simp_rw [mul_comm] at hc
       exact hc.right
+
