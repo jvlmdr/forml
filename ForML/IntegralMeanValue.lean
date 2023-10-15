@@ -7,6 +7,7 @@ import Mathlib.Topology.Basic
 
 open MeasureTheory Real
 
+
 /- Second mean value theorem for integrals.
 
 Follows: https://proofwiki.org/wiki/Mean_Value_Theorem_for_Integrals/Generalization
@@ -131,85 +132,154 @@ lemma exists_mul_eq_intervalIntegral' {f g : ℝ → ℝ} {a b : ℝ} (hab : a <
   simp [h]
 
 
--- Unused.
-lemma IsFiniteMeasure_withDensity_of_integrableOn {f : ℝ → ℝ} {s : Set ℝ} (hs : MeasurableSet s)
-    {μ : Measure ℝ}
-    (h_int : IntegrableOn f s μ) (h_nonneg : ∀ x, x ∈ s → 0 ≤ f x)
-    : IsFiniteMeasure ((μ.restrict s).withDensity (fun x => ENNReal.ofReal (f x))) where
-  measure_univ_lt_top := by
-    simp
-    rcases h_int with ⟨_, ⟨z, hz⟩⟩
-    simp at hz
-    rw [@set_lintegral_congr_fun _ _ _ _ (fun x => ‖f x‖₊) _  hs]
-    . simp [hz]
-    . refine Filter.eventually_of_forall ?_
-      intro x hx
-      rw [ennnorm_eq_ofReal_abs]
-      rw [abs_eq_self.mpr (h_nonneg x hx)]
-
--- Handle trivial case where g is ae zero.
-lemma setIntegral_mul_eq_zero_of_setIntegral_eq_zero {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measure ℝ}
-    (hg_int : IntegrableOn g s μ)
-    (hg_nonneg : 0 ≤ᵐ[μ.restrict s] g)
-    (h : ∫ x in s, g x ∂μ = 0)
-    : ∫ x in s, f x * g x ∂μ = 0 := by
+-- For handling trivial case where g is ae zero.
+lemma integral_mul_eq_zero_of_integral_eq_zero {f g : ℝ → ℝ} {μ : Measure ℝ}
+    (hg_int : Integrable g μ)
+    (hg_nonneg : 0 ≤ᵐ[μ] g)
+    (h : ∫ x, g x ∂μ = 0)
+    : ∫ x, f x * g x ∂μ = 0 := by
   apply integral_eq_zero_of_ae
-  rw [set_integral_eq_zero_iff_of_nonneg_ae hg_nonneg hg_int] at h
+  rw [integral_eq_zero_iff_of_nonneg_ae hg_nonneg hg_int] at h
   apply Filter.Eventually.mp h
   simp
   apply Filter.eventually_of_forall
   intro x hx
   exact Or.inr hx
 
--- Unused.
-lemma setIntegral_eq_setIntegral_norm_of_nonneg
-    {s : Set ℝ} (hs : MeasurableSet s)
-    {f : ℝ → ℝ} (hf : ∀ x, x ∈ s → 0 ≤ f x)
-    {μ : Measure ℝ}
-    : ∫ x in s, f x ∂μ = ∫ x in s, ‖f x‖ ∂μ := by
-  rw [set_integral_congr hs]
-  rw [Set.EqOn]
-  intro x hx
-  simp
-  symm
-  rw [abs_eq_self]
-  exact hf x hx
 
--- Unused.
-lemma toReal_eq_iff_of_pos {a : ENNReal} {z : ℝ} (hz : 0 < z) : ENNReal.toReal a = z ↔ a = ENNReal.ofReal z := by
-  cases a with
-  | none => simp; linarith
-  | some a =>
-    simp [ENNReal.ofReal]
-    rw [← NNReal.coe_eq]
-    rw [Real.coe_toNNReal _ hz.le]
+lemma existsBoundsOn_integral_measure {f : ℝ → ℝ} {q : Measure ℝ} {s : Set ℝ}
+    (hs_meas : MeasurableSet s)
+    (hq_fin : IsFiniteMeasure (q.restrict s))
+    (hq_nonzero : q s ≠ 0)
+    (h_int : IntegrableOn f s q)
+    : (∃ m M, (m ∈ s ∧ M ∈ s) ∧ (∫ x in s, f x ∂q) / ENNReal.toReal (q s) ∈ Set.Icc (f m) (f M)) := by
+  rw [ENNReal.toReal]
+  generalize hz : ENNReal.toNNReal (q s) = z
+
+  rcases hq_fin with ⟨hq_fin⟩
+  simp at hq_fin
+  have hz' : q s = z
+  . rw [← hz]
+    rw [ENNReal.coe_toNNReal hq_fin.ne]
+
+  -- TODO: Avoid cases using assumption?
+  cases eq_or_gt_of_le (zero_le z) with
+  | inl hz_zero =>
+    exfalso
+    rw [hz_zero] at hz
+    rw [ENNReal.toNNReal_eq_zero_iff] at hz
+    cases hz with
+    | inl _ => contradiction
+    | inr h => exact ne_of_lt hq_fin h
+
+  | inr hz_pos =>
+    -- Use ENNReal here for `Measure.restrict_smul`, which is a simp lemma.
+    generalize hp : (z : ENNReal)⁻¹ • q = p
+    have hp_one : IsProbabilityMeasure (p.restrict s)
+    . constructor
+      rw [← hp]
+      simp
+      rw [hz']
+      rw [← ENNReal.div_eq_inv_mul]
+      rw [ENNReal.div_eq_one_iff]
+      . simp; exact hz_pos.ne'
+      . simp
+    have hp_eq : ∫ x in s, f x ∂p = (∫ x in s, f x ∂q) / (z : ℝ)
+    . rw [← hp]
+      simp
+      simp [ENNReal.toReal_inv]
+      rw [inv_mul_eq_div]
+    have hp_int : Integrable f (p.restrict s)
+    . rw [← hp]
+      simp  -- Invisible change (measure of `Integrable`).
+      apply Integrable.smul_measure h_int
+      simp
+      apply hz_pos.ne'
+
+    have hp_meas_compl : p.restrict s sᶜ = 0
+    . rw [Measure.restrict_apply (MeasurableSet.compl hs_meas)]
+      simp
+    have h_lb := @exists_not_mem_null_le_integral _ _ _ _ _ hp_one hp_int hp_meas_compl
+    have h_ub := @exists_not_mem_null_integral_le _ _ _ _ _ hp_one hp_int hp_meas_compl
+    simp at h_lb
+    simp at h_ub
+    rcases h_lb with ⟨m, ⟨hm_mem, hm⟩⟩
+    rcases h_ub with ⟨M, ⟨hM_mem, hM⟩⟩
+
+    exists m
+    exists M
+    apply And.intro ⟨hm_mem, hM_mem⟩
+    simp
+    apply And.intro
+    . rw [hp_eq] at hm
+      exact hm
+    . rw [hp_eq] at hM
+      exact hM
 
 
--- TODO: Extract this part.
--- lemma existsBounds {f g : ℝ → ℝ} {s : Set ℝ} (hs : MeasurableSet s) {μ : Measure ℝ}
---     (hf : ContinuousOn f s)
---     (hg : IntegrableOn g s μ)
---     (hz : 0 < ∫⁻ x in s, ‖g x‖₊ ∂μ)
---     (h : IntegrableOn (fun x => f x * |g x|) s μ)
---     : (∃ m, m ∈ s ∧ f m ≤ ∫ x in s, f x * |g x| ∂μ) ∧
---       (∃ M, M ∈ s ∧ ∫ x in s, f x * |g x| ∂μ ≤ f M) := by  
---   sorry
+lemma existsBoundsOn_integral_mul_nonneg {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measure ℝ}
+    (hs_meas : MeasurableSet s)
+    (hg_int : IntegrableOn g s μ)
+    (hg_nonneg : 0 ≤ᵐ[μ.restrict s] g)
+    (hg_nonzero : ∫ x in s, g x ∂μ ≠ 0)
+    (h_int : IntegrableOn (fun x => f x * g x) s μ)
+    : (∃ m M, (m ∈ s ∧ M ∈ s) ∧ (∫ x in s, f x * g x ∂μ) / (∫ x in s, g x ∂μ) ∈ Set.Icc (f m) (f M)) := by
+  -- Useful to establish this for integral and integrable.
+  have h_ae_eq : (fun x => f x * g x) =ᵐ[μ.restrict s] (fun x => ‖g x‖₊ • f x)
+  . simp [NNReal.smul_def]
+    apply Filter.Eventually.mp hg_nonneg
+    simp
+    apply Filter.eventually_of_forall
+    intro x hx
+    rw [mul_comm]
+    rw [abs_eq_self.mpr hx]
+
+  generalize hq : μ.withDensity (fun x => ‖g x‖₊) = q
+  have hq_g : ENNReal.toReal (q s) = ∫ (x : ℝ) in s, g x ∂μ
+  . simp [← hq, hs_meas]
+    rw [← integral_norm_eq_lintegral_nnnorm hg_int.aestronglyMeasurable]
+    apply integral_congr_ae
+    apply Filter.Eventually.mp hg_nonneg
+    simp
+  have hq_fg : ∫ x in s, f x ∂q = ∫ (x : ℝ) in s, f x * g x ∂μ
+  . rw [← hq]
+    rw [set_integral_withDensity_eq_set_integral_smul₀ _ _ hs_meas]
+    . exact integral_congr_ae h_ae_eq.symm
+    . apply AEMeasurable.nnnorm
+      exact hg_int.aemeasurable
+  rw [← hq_g, ← hq_fg]
+
+  refine existsBoundsOn_integral_measure hs_meas ?_ ?_ ?_
+  . constructor
+    simp [← hq, hs_meas]
+    exact hg_int.right
+  . intro h
+    revert hq_g
+    simp [h]
+    rw [eq_comm]
+    exact hg_nonzero
+  . simp [← hq]
+    rw [IntegrableOn]
+    rw [restrict_withDensity hs_meas]
+    rw [integrable_withDensity_iff_integrable_smul₀]
+    . exact IntegrableOn.congr_fun_ae h_int h_ae_eq
+    . exact AEMeasurable.nnnorm hg_int.aemeasurable
 
 
--- Second mean value theorem for improper integral.
--- https://math.stackexchange.com/questions/3712287/mean-value-theorem-for-improper-integrals
+/- Second mean value theorem for improper integrals.
+
+Follows: https://math.stackexchange.com/questions/3712287/mean-value-theorem-for-improper-integrals
+-/
 theorem exists_mul_eq_setInterval {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measure ℝ}
     (hs_ne : Set.Nonempty s) {hs_meas : MeasurableSet s} (hs_conn : IsPreconnected s) {hs_closed : IsClosed s}
-    (h_int : IntegrableOn (fun x => f x * g x) s μ)
     (hf_cont : ContinuousOn f s)
     (hg_int : IntegrableOn g s μ)
     (hg_nonneg : 0 ≤ᵐ[μ.restrict s] g)
+    (h_int : IntegrableOn (fun x => f x * g x) s μ)
     : ∃ c, c ∈ s ∧ ∫ x in s, f x * g x ∂μ = f c * ∫ x in s, g x ∂μ := by
-  -- We will normalize g to obtain `IsProbabilityMeasure`.
-  -- First deal with case where g is (ae) zero.
 
-  -- Rewrite as lintegral using fact that `g` is non-negative.
-  have hz_int : ∫ x in s, g x ∂μ = ENNReal.toReal (∫⁻ (x : ℝ) in s, ↑‖g x‖₊ ∂μ)
+  -- TODO: Reduce duplication?
+  have hz_integral : ∫ x in s, g x ∂μ = ENNReal.toReal (∫⁻ x in s, ↑‖g x‖₊ ∂μ)
   . rw [← integral_norm_eq_lintegral_nnnorm hg_int.aestronglyMeasurable]
     rw [integral_congr_ae]
     apply Filter.Eventually.mp hg_nonneg
@@ -219,102 +289,35 @@ theorem exists_mul_eq_setInterval {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measur
     symm
     rw [abs_eq_self]
     exact hx
-  -- Obtain NNReal to represent integral (can coerce to Real, ENNReal).
-  rw [ENNReal.toReal] at hz_int
-  generalize hz_lint : ENNReal.toNNReal (∫⁻ (x : ℝ) in s, ↑‖g x‖₊ ∂μ) = z at hz_int
-  symm at hz_lint
-  -- Simplify the goal expression to use `z`.
-  simp_rw [hz_int]
+  rw [ENNReal.toReal] at hz_integral
+  generalize hz_lintegral : ENNReal.toNNReal (∫⁻ (x : ℝ) in s, ↑‖g x‖₊ ∂μ) = z
+  rw [hz_lintegral] at hz_integral
 
-  -- Deal with case where z = 0.
-  -- rcases z with ⟨z, hz⟩
-  -- simp at hz_int
   cases eq_or_gt_of_le (zero_le z) with
   | inl hz_zero =>
-    rw [hz_zero] at hz_int ⊢
-    simp
-    rw [setIntegral_mul_eq_zero_of_setIntegral_eq_zero hg_int hg_nonneg hz_int]
-    simp
-    exact hs_ne
+    simp [hz_zero] at hz_integral
+    simp [hz_integral]
+    refine And.intro hs_ne ?_
+    exact integral_mul_eq_zero_of_integral_eq_zero hg_int hg_nonneg hz_integral
   | inr hz_pos =>
-    -- Integral of g is nonzero. Normalize to obtain `IsProbabilityMeasure`.
-    -- Could use `exists_le_integral` with subtype `{x // x ∈ s}`,
-    -- or use `exists_not_mem_null_le_integral` with `Measure.restrict`.
-    -- TODO: Extract this to a lemma? Will it generalize to `MeasurableSet s` and `IsPreconnected s`?
-    generalize hq : μ.withDensity (fun x => ‖g x‖₊) = q
-    -- Use ENNReal here for `Measure.restrict_smul`, which is a simp lemma.
-    generalize hp : (z : ENNReal)⁻¹ • q = p
-    have hp_one : IsProbabilityMeasure (p.restrict s)
-    . constructor
-      rw [← hp]
-      simp
-      rw [← hq]
-      rw [MeasureTheory.withDensity_apply _ hs_meas]
-      rw [← ENNReal.div_eq_inv_mul]
-      rw [ENNReal.div_eq_one_iff]
-      rotate_left
-      . simp; apply hz_pos.ne'
-      . simp
-      rw [hz_lint]
-      rw [ENNReal.coe_toNNReal]
-      rcases hg_int with ⟨_, ⟨w, hw⟩⟩
-      simp at hw
-      simp [hw]
-    -- Used twice below.
-    have hq_ae_eq : (fun x => f x * g x) =ᵐ[μ.restrict s] (fun x => ‖g x‖₊ • f x)
-    . simp [NNReal.smul_def]
-      apply Filter.Eventually.mp hg_nonneg
-      simp
-      apply Filter.eventually_of_forall
-      intro x hx
-      rw [mul_comm]
-      rw [abs_eq_self.mpr hx]
-    have hq_eq : ∫ x in s, f x ∂q = ∫ x in s, f x * g x ∂μ
-    . rw [← hq]
-      rw [set_integral_withDensity_eq_set_integral_smul₀ _ _ hs_meas]
-      . apply integral_congr_ae hq_ae_eq.symm
-      . exact AEMeasurable.nnnorm hg_int.aemeasurable
-    have hq_int : Integrable f (q.restrict s)
-    . rw [← hq]
-      rw [restrict_withDensity hs_meas]
-      rw [integrable_withDensity_iff_integrable_smul₀]
-      . exact IntegrableOn.congr_fun_ae h_int hq_ae_eq
-      . exact AEMeasurable.nnnorm hg_int.aemeasurable
-    have hp_eq : ∫ x in s, f x ∂p = (z : ℝ)⁻¹ * ∫ x in s, f x * g x ∂μ
-    . rw [← hp, ← hq_eq]
-      simp
-      simp [ENNReal.toReal_inv]
-    have hp_int : Integrable f (p.restrict s)
-    . rw [← hp]
-      simp
-      apply Integrable.smul_measure hq_int
-      simp
-      apply hz_pos.ne'
-    -- 🎉
+    have hmM := existsBoundsOn_integral_mul_nonneg hs_meas hg_int hg_nonneg ?_ h_int
+    swap
+    . intro h_zero
+      simp [h_zero] at hz_integral
+      rw [eq_comm] at hz_integral
+      rw [NNReal.coe_eq_zero] at hz_integral
+      simp [hz_integral] at hz_pos
 
-    have hp_meas_compl : p.restrict s sᶜ = 0
-    . simp [Measure.restrict_apply (MeasurableSet.compl hs_meas)]
-    have h_lb := @exists_not_mem_null_le_integral _ _ _ _ _ hp_one hp_int hp_meas_compl
-    have h_ub := @exists_not_mem_null_integral_le _ _ _ _ _ hp_one hp_int hp_meas_compl
-    simp_rw [Set.not_mem_compl_iff] at h_lb
-    simp_rw [Set.not_mem_compl_iff] at h_ub
-    -- 🎉
-
-    rcases h_lb with ⟨m, ⟨hm_mem, hm⟩⟩
-    rcases h_ub with ⟨M, ⟨hM_mem, hM⟩⟩
-    rw [hp_eq] at hm
-    rw [hp_eq] at hM
-    -- Funny! I didn't think we would be able to obtain this.
-    -- I was just looking for `k ≤ ... ≤ K` rather than `f m ≤ ... ≤ f M`.
-    clear hp hp_one hp_eq hp_int hp_meas_compl p
-    clear hq hq_ae_eq hq_eq hq_int q
-
-    -- Multiply by z⁻¹ on either side.
+    -- Use `z` for legibility.
+    rw [hz_integral]
+    rw [hz_integral] at hmM
+    -- Divide by `z` in goal.
     have hz_ne_zero : (z : ℝ) ≠ 0 := ne_of_gt hz_pos
-    conv =>
-      arg 1; intro c; rhs
-      rw [mul_comm]
-      rw [← inv_mul_eq_iff_eq_mul₀ hz_ne_zero]
+    conv => arg 1; intro c; rhs; rw [← div_eq_iff hz_ne_zero]
+
+    rcases hmM with ⟨m, hmM⟩
+    rcases hmM with ⟨M, hmM⟩
+    rcases hmM with ⟨⟨hm_mem, hM_mem⟩, ⟨hm, hM⟩⟩
 
     cases eq_or_gt_of_le hm with
     | inl hm => exists m
