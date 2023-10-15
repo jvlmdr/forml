@@ -148,23 +148,18 @@ lemma IsFiniteMeasure_withDensity_of_integrableOn {f : ℝ → ℝ} {s : Set ℝ
       rw [abs_eq_self.mpr (h_nonneg x hx)]
 
 -- Handle trivial case where g is ae zero.
-lemma setIntegral_mul_eq_zero_of_setIntegral_eq_zero {f g : ℝ → ℝ}
-    {s : Set ℝ} (hs : MeasurableSet s) {μ : Measure ℝ}
+lemma setIntegral_mul_eq_zero_of_setIntegral_eq_zero {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measure ℝ}
     (hg_int : IntegrableOn g s μ)
-    (hg_nonneg : ∀ x, x ∈ s → 0 ≤ g x)
+    (hg_nonneg : 0 ≤ᵐ[μ.restrict s] g)
     (h : ∫ x in s, g x ∂μ = 0)
     : ∫ x in s, f x * g x ∂μ = 0 := by
-  rw [MeasureTheory.set_integral_eq_zero_iff_of_nonneg_ae] at h
-  rotate_left
-  . -- There is no `Filter.eventuallyLe_inf_principal_iff`.
-    -- Took this from definition of `Filter.eventuallyEq_inf_principal_iff`.
-    simp [Filter.EventuallyLE]
-    rw [ae_restrict_iff' hs]
-    exact Filter.eventually_of_forall hg_nonneg
-  . exact hg_int
-  replace h := Filter.EventuallyEq.mul (ae_eq_refl f) h
-  simp at h
-  simp [integral_congr_ae h]
+  apply integral_eq_zero_of_ae
+  rw [set_integral_eq_zero_iff_of_nonneg_ae hg_nonneg hg_int] at h
+  apply Filter.Eventually.mp h
+  simp
+  apply Filter.eventually_of_forall
+  intro x hx
+  exact Or.inr hx
 
 -- Unused.
 lemma setIntegral_eq_setIntegral_norm_of_nonneg
@@ -208,7 +203,7 @@ theorem exists_mul_eq_setInterval {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measur
     (h_int : IntegrableOn (fun x => f x * g x) s μ)
     (hf_cont : ContinuousOn f s)
     (hg_int : IntegrableOn g s μ)
-    (hg_nonneg : ∀ x, x ∈ s → 0 ≤ g x)
+    (hg_nonneg : 0 ≤ᵐ[μ.restrict s] g)
     : ∃ c, c ∈ s ∧ ∫ x in s, f x * g x ∂μ = f c * ∫ x in s, g x ∂μ := by
   -- We will normalize g to obtain `IsProbabilityMeasure`.
   -- First deal with case where g is (ae) zero.
@@ -216,12 +211,14 @@ theorem exists_mul_eq_setInterval {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measur
   -- Rewrite as lintegral using fact that `g` is non-negative.
   have hz_int : ∫ x in s, g x ∂μ = ENNReal.toReal (∫⁻ (x : ℝ) in s, ↑‖g x‖₊ ∂μ)
   . rw [← integral_norm_eq_lintegral_nnnorm hg_int.aestronglyMeasurable]
-    rw [set_integral_congr hs_meas]
-    simp [Set.EqOn]
+    rw [integral_congr_ae]
+    apply Filter.Eventually.mp hg_nonneg
+    simp
+    apply Filter.eventually_of_forall
     intro x hx
     symm
     rw [abs_eq_self]
-    exact hg_nonneg x hx
+    exact hx
   -- Obtain NNReal to represent integral (can coerce to Real, ENNReal).
   rw [ENNReal.toReal] at hz_int
   generalize hz_lint : ENNReal.toNNReal (∫⁻ (x : ℝ) in s, ↑‖g x‖₊ ∂μ) = z at hz_int
@@ -236,7 +233,7 @@ theorem exists_mul_eq_setInterval {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measur
   | inl hz_zero =>
     rw [hz_zero] at hz_int ⊢
     simp
-    rw [setIntegral_mul_eq_zero_of_setIntegral_eq_zero hs_meas hg_int hg_nonneg hz_int]
+    rw [setIntegral_mul_eq_zero_of_setIntegral_eq_zero hg_int hg_nonneg hz_int]
     simp
     exact hs_ne
   | inr hz_pos =>
@@ -263,33 +260,36 @@ theorem exists_mul_eq_setInterval {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measur
       rcases hg_int with ⟨_, ⟨w, hw⟩⟩
       simp at hw
       simp [hw]
-    -- Useful for showing equivalence.
-    have hq_eqOn : Set.EqOn (fun x => ‖g x‖₊ • f x) (fun x => f x * g x) s
+    -- Used twice below.
+    have hq_ae_eq : (fun x => f x * g x) =ᵐ[μ.restrict s] (fun x => ‖g x‖₊ • f x)
     . simp [NNReal.smul_def]
-      rw [Set.EqOn]
+      apply Filter.Eventually.mp hg_nonneg
+      simp
+      apply Filter.eventually_of_forall
       intro x hx
-      rw [mul_comm, abs_of_nonneg (hg_nonneg x hx)]
+      rw [mul_comm]
+      rw [abs_eq_self.mpr hx]
     have hq_eq : ∫ x in s, f x ∂q = ∫ x in s, f x * g x ∂μ
     . rw [← hq]
       rw [set_integral_withDensity_eq_set_integral_smul₀ _ _ hs_meas]
-      . exact set_integral_congr hs_meas hq_eqOn
+      . apply integral_congr_ae hq_ae_eq.symm
       . exact AEMeasurable.nnnorm hg_int.aemeasurable
     have hq_int : Integrable f (q.restrict s)
     . rw [← hq]
       rw [restrict_withDensity hs_meas]
       rw [integrable_withDensity_iff_integrable_smul₀]
-      . exact IntegrableOn.congr_fun h_int hq_eqOn.symm hs_meas
+      . exact IntegrableOn.congr_fun_ae h_int hq_ae_eq
       . exact AEMeasurable.nnnorm hg_int.aemeasurable
     have hp_eq : ∫ x in s, f x ∂p = (z : ℝ)⁻¹ * ∫ x in s, f x * g x ∂μ
     . rw [← hp, ← hq_eq]
       simp
-      apply Or.inl
       simp [ENNReal.toReal_inv]
     have hp_int : Integrable f (p.restrict s)
     . rw [← hp]
       simp
       apply Integrable.smul_measure hq_int
-      simp; apply hz_pos.ne'
+      simp
+      apply hz_pos.ne'
     -- 🎉
 
     have hp_meas_compl : p.restrict s sᶜ = 0
@@ -307,7 +307,7 @@ theorem exists_mul_eq_setInterval {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measur
     -- Funny! I didn't think we would be able to obtain this.
     -- I was just looking for `k ≤ ... ≤ K` rather than `f m ≤ ... ≤ f M`.
     clear hp hp_one hp_eq hp_int hp_meas_compl p
-    clear hq hq_eqOn hq_eq hq_int q
+    clear hq hq_ae_eq hq_eq hq_int q
 
     -- Multiply by z⁻¹ on either side.
     have hz_ne_zero : (z : ℝ) ≠ 0 := ne_of_gt hz_pos
