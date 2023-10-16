@@ -8,22 +8,7 @@ import Mathlib.Topology.Basic
 open MeasureTheory Real
 
 
--- For handling trivial case where g is ae zero.
-lemma integral_mul_eq_zero_of_integral_eq_zero {f g : ℝ → ℝ} {μ : Measure ℝ}
-    (hg_int : Integrable g μ)
-    (hg_nonneg : 0 ≤ᵐ[μ] g)
-    (h : ∫ x, g x ∂μ = 0)
-    : ∫ x, f x * g x ∂μ = 0 := by
-  apply integral_eq_zero_of_ae
-  rw [integral_eq_zero_iff_of_nonneg_ae hg_nonneg hg_int] at h
-  apply Filter.Eventually.mp h
-  simp
-  apply Filter.eventually_of_forall
-  intro x hx
-  exact Or.inr hx
-
-
-/- Application of `exists_not_mem_null_le_integral` to obtain lower and upper bounds on set. -/
+/- Application of `exists_not_mem_null_le_integral` on `Measure.restrict` to obtain lower and upper bounds. -/
 lemma existsBoundsOn_integral_measure {f : ℝ → ℝ} {q : Measure ℝ} {s : Set ℝ}
     (hs_meas : MeasurableSet s)
     (hq_fin : IsFiniteMeasure (q.restrict s))
@@ -159,7 +144,7 @@ theorem exists_mul_eq_setInterval {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measur
 
   -- TODO: Generalize type to `f : ℝ → E` using `f x • g x`?
 
-  have hz_integral : ∫ x in s, g x ∂μ = ENNReal.toReal (∫⁻ x in s, ↑‖g x‖₊ ∂μ)
+  have hz' : ∫ x in s, g x ∂μ = ENNReal.toReal (∫⁻ x in s, ↑‖g x‖₊ ∂μ)
   . rw [← integral_norm_eq_lintegral_nnnorm hg_int.aestronglyMeasurable]
     rw [integral_congr_ae]
     apply Filter.Eventually.mp hg_nonneg
@@ -169,28 +154,35 @@ theorem exists_mul_eq_setInterval {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measur
     symm
     rw [abs_eq_self]
     exact hx
-  rw [ENNReal.toReal] at hz_integral
-  generalize hz_lintegral : ENNReal.toNNReal (∫⁻ (x : ℝ) in s, ↑‖g x‖₊ ∂μ) = z
-  rw [hz_lintegral] at hz_integral
+  rw [ENNReal.toReal] at hz'
+  generalize hz : ENNReal.toNNReal (∫⁻ (x : ℝ) in s, ↑‖g x‖₊ ∂μ) = z
+  rw [hz] at hz'
 
   cases eq_or_gt_of_le (zero_le z) with
   | inl hz_zero =>
-    simp [hz_zero] at hz_integral
-    simp [hz_integral]
+    simp [hz_zero] at hz'
+    simp [hz']
     refine And.intro hs_ne ?_
-    exact integral_mul_eq_zero_of_integral_eq_zero hg_int hg_nonneg hz_integral
+    apply integral_eq_zero_of_ae
+    rw [integral_eq_zero_iff_of_nonneg_ae hg_nonneg hg_int] at hz'
+    apply Filter.Eventually.mp hz'
+    simp
+    apply Filter.eventually_of_forall
+    intro x hx
+    exact Or.inr hx
+
   | inr hz_pos =>
     have hmM := existsBoundsOn_integral_mul_nonneg hs_meas hg_int hg_nonneg ?_ h_int
     swap
     . intro h_zero
-      simp [h_zero] at hz_integral
-      rw [eq_comm] at hz_integral
-      rw [NNReal.coe_eq_zero] at hz_integral
-      simp [hz_integral] at hz_pos
+      simp [h_zero] at hz'
+      rw [eq_comm] at hz'
+      rw [NNReal.coe_eq_zero] at hz'
+      simp [hz'] at hz_pos
 
     -- Use `z` for legibility.
-    rw [hz_integral]
-    rw [hz_integral] at hmM
+    rw [hz']
+    rw [hz'] at hmM
     -- Divide by `z` in goal.
     have hz_ne_zero : (z : ℝ) ≠ 0 := ne_of_gt hz_pos
     conv => arg 1; intro c; rhs; rw [← div_eq_iff hz_ne_zero]
