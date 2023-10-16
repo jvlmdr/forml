@@ -8,130 +8,6 @@ import Mathlib.Topology.Basic
 open MeasureTheory Real
 
 
-/- Second mean value theorem for integrals.
-
-Follows: https://proofwiki.org/wiki/Mean_Value_Theorem_for_Integrals/Generalization
--/
-lemma exists_mul_eq_intervalIntegral {f g : ℝ → ℝ} {a b : ℝ} (hab : a < b)
-    (hfc : ContinuousOn f (Set.Icc a b))
-    (hgc : ContinuousOn g (Set.Icc a b))
-    (hgnn : ∀ x, x ∈ Set.Icc a b → 0 ≤ g x)
-    : ∃ c, c ∈ Set.Icc a b ∧ ∫ x in a..b, f x * g x = f c * ∫ x in a..b, g x := by
-  rw [← Set.uIcc_of_lt hab] at *
-  have hm := @IsCompact.exists_isMinOn ℝ _ _ _ _ _ _ isCompact_uIcc Set.nonempty_uIcc _ hfc
-  have hM := @IsCompact.exists_isMaxOn ℝ _ _ _ _ _ _ isCompact_uIcc Set.nonempty_uIcc _ hfc
-  rcases hm with ⟨m, ⟨hm_mem, hm⟩⟩
-  rcases hM with ⟨M, ⟨hM_mem, hM⟩⟩
-  simp [IsMinOn, IsMinFilter] at hm
-  simp [IsMaxOn, IsMaxFilter] at hM
-  replace hm : ∫ x in a..b, g x * f m ≤ ∫ x in a..b, g x * f x
-  . apply intervalIntegral.integral_mono_on (le_of_lt hab)
-    . apply ContinuousOn.intervalIntegrable
-      exact ContinuousOn.mul hgc continuousOn_const
-    . apply ContinuousOn.intervalIntegrable
-      exact ContinuousOn.mul hgc hfc
-    rw [← Set.uIcc_of_lt hab]
-    intro u hu
-    exact mul_le_mul_of_nonneg_left (hm u hu) (hgnn u hu)
-  replace hM : ∫ x in a..b, g x * f x ≤ ∫ x in a..b, g x * f M
-  . apply intervalIntegral.integral_mono_on (le_of_lt hab)
-    . apply ContinuousOn.intervalIntegrable
-      exact ContinuousOn.mul hgc hfc
-    . apply ContinuousOn.intervalIntegrable
-      exact ContinuousOn.mul hgc continuousOn_const
-    rw [← Set.uIcc_of_lt hab]
-    intro u hu
-    exact mul_le_mul_of_nonneg_left (hM u hu) (hgnn u hu)
-  simp at hm
-  simp at hM
-  -- Introduce `z` to denote integral for brevity.
-  generalize hz : ∫ (x : ℝ) in a..b, g x = z at *
-  have h : 0 ≤ z
-  . rw [← hz]
-    apply intervalIntegral.integral_nonneg (le_of_lt hab)
-    rw [← Set.uIcc_of_lt hab]
-    exact hgnn
-  cases eq_or_gt_of_le h with
-  | inl h =>
-    -- Cannot divide by integral; show g is ae zero.
-    simp [h]
-    apply And.intro
-    . exists a; simp
-    rw [← hz] at h
-    rw [intervalIntegral.integral_of_le (le_of_lt hab)] at h
-    rw [MeasureTheory.set_integral_eq_zero_iff_of_nonneg_ae] at h
-    rotate_left
-    . simp
-      -- There is no `Filter.eventuallyLe_inf_principal_iff`.
-      -- Took this from definition of `Filter.eventuallyEq_inf_principal_iff`.
-      rw [Filter.EventuallyLE, Filter.eventually_inf_principal]
-      apply Filter.eventually_of_forall
-      intro x hx
-      simp
-      apply hgnn
-      rw [Set.uIcc_of_lt hab]
-      exact Set.mem_Icc_of_Ioc hx
-    . rw [← integrableOn_Icc_iff_integrableOn_Ioc]
-      rw [← Set.uIcc_of_lt hab]
-      exact ContinuousOn.integrableOn_uIcc hgc
-    replace h := Filter.EventuallyEq.mul (ae_eq_refl f) h
-    conv at h => rhs; simp
-    rw [intervalIntegral.integral_of_le (le_of_lt hab)]
-    simp at h
-    rw [Filter.eventuallyEq_inf_principal_iff] at h
-    rw [set_integral_congr_ae measurableSet_Ioc h]
-    simp
-  | inr h =>
-    -- Divide both sides by integral of `g`.
-    rw [mul_comm z, ← div_le_iff h] at hM
-    rw [mul_comm z, ← le_div_iff h] at hm
-    simp_rw [eq_comm]
-    simp_rw [← eq_div_iff (ne_of_gt h)]
-    -- Obtain the constant using the mean value theorem for continuous functions.
-    have hmM := Set.uIcc_subset_uIcc hm_mem hM_mem
-    have h_subset := @intermediate_value_uIcc ℝ _ _ _ _ ℝ _ _ _ m M f (ContinuousOn.mono hfc hmM)
-    have h_mem := Set.mem_of_mem_of_subset (Set.mem_uIcc_of_le hm hM) h_subset
-    simp at h_mem
-    rcases h_mem with ⟨c, hc⟩
-    exists c
-    apply And.intro
-    . exact Set.mem_of_mem_of_subset hc.left hmM
-    . simp_rw [mul_comm] at hc
-      exact hc.right
-
--- For easy rewrite.
-lemma and_left_imp {p q r : Prop} : (p ∧ q → p ∧ r) ↔ (p → q → r) := by
-  simp
-  apply Iff.intro
-  . intro h hp hq
-    exact (h hp hq).right
-  . intro h hp hq
-    exact ⟨hp, h hp hq⟩
-
-/- Mean value theorem as a single integral equal to zero. -/
-lemma exists_mul_eq_intervalIntegral' {f g : ℝ → ℝ} {a b : ℝ} (hab : a < b)
-    (hfc : ContinuousOn f (Set.Icc a b))
-    (hgc : ContinuousOn g (Set.Icc a b))
-    (hgnn : ∀ x, x ∈ Set.Icc a b → 0 ≤ g x)
-    : ∃ c, c ∈ Set.Icc a b ∧ ∫ x in a..b, (f x - f c) * g x = 0 := by
-  rcases exists_mul_eq_intervalIntegral hab hfc hgc hgnn with ⟨c, hc⟩
-  exists c
-  revert hc
-  rw [and_left_imp]
-  intro _
-  simp [sub_mul]
-  rw [intervalIntegral.integral_sub]
-  rotate_left
-  . apply ContinuousOn.intervalIntegrable
-    rw [Set.uIcc_of_lt hab]
-    exact ContinuousOn.mul hfc hgc
-  . apply ContinuousOn.intervalIntegrable
-    rw [Set.uIcc_of_lt hab]
-    exact ContinuousOn.mul continuousOn_const hgc
-  intro h
-  simp [h]
-
-
 -- For handling trivial case where g is ae zero.
 lemma integral_mul_eq_zero_of_integral_eq_zero {f g : ℝ → ℝ} {μ : Measure ℝ}
     (hg_int : Integrable g μ)
@@ -147,6 +23,7 @@ lemma integral_mul_eq_zero_of_integral_eq_zero {f g : ℝ → ℝ} {μ : Measure
   exact Or.inr hx
 
 
+/- Application of `exists_not_mem_null_le_integral` to obtain lower and upper bounds on set. -/
 lemma existsBoundsOn_integral_measure {f : ℝ → ℝ} {q : Measure ℝ} {s : Set ℝ}
     (hs_meas : MeasurableSet s)
     (hq_fin : IsFiniteMeasure (q.restrict s))
@@ -271,14 +148,17 @@ lemma existsBoundsOn_integral_mul_nonneg {f g : ℝ → ℝ} {s : Set ℝ} {μ :
 Follows: https://math.stackexchange.com/questions/3712287/mean-value-theorem-for-improper-integrals
 -/
 theorem exists_mul_eq_setInterval {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measure ℝ}
-    (hs_ne : Set.Nonempty s) {hs_meas : MeasurableSet s} (hs_conn : IsPreconnected s) {hs_closed : IsClosed s}
+    {hs_ne : Set.Nonempty s} {hs_meas : MeasurableSet s} {hs_conn : IsPreconnected s} {hs_closed : IsClosed s}
     (hf_cont : ContinuousOn f s)
     (hg_int : IntegrableOn g s μ)
     (hg_nonneg : 0 ≤ᵐ[μ.restrict s] g)
     (h_int : IntegrableOn (fun x => f x * g x) s μ)
     : ∃ c, c ∈ s ∧ ∫ x in s, f x * g x ∂μ = f c * ∫ x in s, g x ∂μ := by
+  -- TODO: Is it possible to generalize to `s` that is open?
+  -- Use `ContinuousOn f (closure s)` and `c ∈ closure s` instead?
 
-  -- TODO: Reduce duplication?
+  -- TODO: Generalize type to `f : ℝ → E` using `f x • g x`?
+
   have hz_integral : ∫ x in s, g x ∂μ = ENNReal.toReal (∫⁻ x in s, ↑‖g x‖₊ ∂μ)
   . rw [← integral_norm_eq_lintegral_nnnorm hg_int.aestronglyMeasurable]
     rw [integral_congr_ae]
@@ -342,3 +222,81 @@ theorem exists_mul_eq_setInterval {f g : ℝ → ℝ} {s : Set ℝ} {μ : Measur
           . simp; exact self_mem_nhdsWithin
           . exact hf_cont m hm_mem
           . exact hf_cont M hM_mem
+
+
+/- Utility for showing `0 ≤ᵐ[μ.restrict s] g` as required by most lemmas. -/
+lemma Filter_eventuallyLe_restrict_of_forall_mem_imp {α E : Type*} [MeasurableSpace α] [LE E]
+    {f g : α → E} {s : Set α} (hs : MeasurableSet s) {μ : Measure α}
+    (h : ∀ x, x ∈ s → f x ≤ g x) : f ≤ᵐ[μ.restrict s] g := by
+  rw [Filter.EventuallyLE]
+  rw [ae_restrict_iff' hs]
+  exact Filter.eventually_of_forall h
+
+
+lemma exists_mul_eq_setInterval_Ici {a : ℝ} {f g : ℝ → ℝ} {μ : Measure ℝ}
+    (hf_cont : ContinuousOn f (Set.Ici a))
+    (hg_int : IntegrableOn g (Set.Ici a) μ)
+    (hg_nonneg : 0 ≤ᵐ[μ.restrict (Set.Ici a)] g)
+    (h_int : IntegrableOn (fun x => f x * g x) (Set.Ici a) μ)
+    : ∃ c, c ∈ (Set.Ici a) ∧ ∫ x in Set.Ici a, f x * g x ∂μ = f c * ∫ x in Set.Ici a, g x ∂μ := by
+  apply exists_mul_eq_setInterval hf_cont hg_int hg_nonneg h_int <;> try simp
+  repeat simp [isClosed_Ici, isPreconnected_Ici]
+
+lemma exists_mul_eq_setInterval_Iic {a : ℝ} {f g : ℝ → ℝ} {μ : Measure ℝ}
+    (hf_cont : ContinuousOn f (Set.Iic a))
+    (hg_int : IntegrableOn g (Set.Iic a) μ)
+    (hg_nonneg : 0 ≤ᵐ[μ.restrict (Set.Iic a)] g)
+    (h_int : IntegrableOn (fun x => f x * g x) (Set.Iic a) μ)
+    : ∃ c, c ∈ (Set.Iic a) ∧ ∫ x in Set.Iic a, f x * g x ∂μ = f c * ∫ x in Set.Iic a, g x ∂μ := by
+  apply exists_mul_eq_setInterval hf_cont hg_int hg_nonneg h_int <;> try simp
+  repeat simp [isClosed_Iic, isPreconnected_Iic]
+
+lemma exists_mul_eq_setInterval_Icc {a b : ℝ} (hab : a ≤ b) {f g : ℝ → ℝ} {μ : Measure ℝ}
+    (hf_cont : ContinuousOn f (Set.Icc a b))
+    (hg_int : IntegrableOn g (Set.Icc a b) μ)
+    (hg_nonneg : 0 ≤ᵐ[μ.restrict (Set.Icc a b)] g)
+    (h_int : IntegrableOn (fun x => f x * g x) (Set.Icc a b) μ)
+    : ∃ c, c ∈ (Set.Icc a b) ∧ ∫ x in Set.Icc a b, f x * g x ∂μ = f c * ∫ x in Set.Icc a b, g x ∂μ := by
+  apply exists_mul_eq_setInterval hf_cont hg_int hg_nonneg h_int <;> try simp [hab]
+  repeat simp [isClosed_Icc, isPreconnected_Icc, hab]
+
+
+/- Obtain `IntegrableOn` from `ContinuousOn.mul`. -/
+lemma exists_mul_eq_setInterval_Icc_of_continuousOn {a b : ℝ} (hab : a ≤ b) {f g : ℝ → ℝ}
+    {μ : Measure ℝ} [IsLocallyFiniteMeasure μ]
+    (hf_cont : ContinuousOn f (Set.Icc a b))
+    (hg_cont : ContinuousOn g (Set.Icc a b))
+    (hg_nonneg : ∀ x, x ∈ Set.Icc a b → 0 ≤ g x)
+    : ∃ c, c ∈ (Set.Icc a b) ∧ ∫ x in Set.Icc a b, f x * g x ∂μ = f c * ∫ x in Set.Icc a b, g x ∂μ := by
+  apply exists_mul_eq_setInterval_Icc hab hf_cont ?_ ?_ ?_
+  . exact ContinuousOn.integrableOn_Icc hg_cont
+  . exact Filter_eventuallyLe_restrict_of_forall_mem_imp measurableSet_Icc hg_nonneg
+  . exact ContinuousOn.integrableOn_Icc (ContinuousOn.mul hf_cont hg_cont)
+
+
+-- TODO: Possible to remove `NoAtoms μ`?
+-- Could remove assumption `IsClosed s` above to eliminate `integral_Icc_eq_integral_Ioc`?
+lemma exists_mul_eq_intervalIntegral {a b : ℝ} (hab : a ≤ b) {f g : ℝ → ℝ}
+    {μ : Measure ℝ} [NoAtoms μ] [IsLocallyFiniteMeasure μ]
+    (hf_cont : ContinuousOn f (Set.Icc a b))
+    (hg_int : IntervalIntegrable g μ a b)
+    (hg_nonneg : 0 ≤ᵐ[μ.restrict (Set.Icc a b)] g)
+    (h_int : IntervalIntegrable (fun x => f x * g x) μ a b)
+    : ∃ c, c ∈ (Set.Icc a b) ∧ ∫ x in a..b, f x * g x ∂μ = f c * ∫ x in a..b, g x ∂μ := by
+  simp only [intervalIntegral.integral_of_le hab]
+  simp only [← integral_Icc_eq_integral_Ioc]
+  refine exists_mul_eq_setInterval_Icc hab hf_cont ?_ hg_nonneg ?_
+  . rw [integrableOn_Icc_iff_integrableOn_Ioc]
+    exact hg_int.left
+  . rw [integrableOn_Icc_iff_integrableOn_Ioc]
+    exact h_int.left
+
+theorem exists_mul_eq_intervalIntegral_of_continuousOn {a b : ℝ} (hab : a ≤ b) {f g : ℝ → ℝ}
+    {μ : Measure ℝ} [NoAtoms μ] [IsLocallyFiniteMeasure μ]
+    (hf_cont : ContinuousOn f (Set.Icc a b))
+    (hg_cont : ContinuousOn g (Set.Icc a b))
+    (hg_nonneg : ∀ x, x ∈ Set.Icc a b → 0 ≤ g x)
+    : ∃ c, c ∈ Set.Icc a b ∧ ∫ x in a..b, f x * g x ∂μ = f c * ∫ x in a..b, g x ∂μ := by
+  simp only [intervalIntegral.integral_of_le hab]
+  simp only [← integral_Icc_eq_integral_Ioc]
+  exact exists_mul_eq_setInterval_Icc_of_continuousOn hab hf_cont hg_cont hg_nonneg
