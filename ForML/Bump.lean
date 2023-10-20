@@ -7,6 +7,7 @@ https://proofwiki.org/wiki/Definition:Test_Function
 
 import Mathlib.Algebra.Algebra.NonUnitalSubalgebra
 import Mathlib.Algebra.Module.Submodule.Basic
+import Mathlib.Algebra.Ring.Defs
 import Mathlib.Analysis.Calculus.ContDiff
 import Mathlib.MeasureTheory.Function.L1Space
 import Mathlib.MeasureTheory.Function.LocallyIntegrable
@@ -31,8 +32,18 @@ lemma mul {f g : α → ℝ} (hf : IsBump f) (hg : IsBump g) : IsBump (f * g) :=
 lemma continuous {f : α → ℝ} (hf : IsBump f) : Continuous f :=
   ContDiff.continuous hf.right
 
-lemma differentiable {f : α → ℝ} (hf : IsBump f) : Differentiable ℝ f := by
-  apply ContDiff.differentiable hf.right (by norm_num)
+lemma differentiable {f : α → ℝ} (hf : IsBump f) : Differentiable ℝ f :=
+  ContDiff.differentiable hf.right (by norm_num)
+
+lemma bounded {f : α → ℝ} (hf : IsBump f) : ∃ C, ∀ x, ‖f x‖ ≤ C :=
+  Continuous.bounded_above_of_compact_support hf.continuous hf.left
+
+lemma comp_neg {f : α → ℝ} (hf : IsBump f) : IsBump (fun (x : α) => f (-x)) := by
+  constructor
+  . have h_neg {x : α} : -x = (Homeomorph.neg α) x := by simp [Homeomorph.neg]
+    simp [h_neg]
+    exact HasCompactSupport.comp_homeomorph hf.left _
+  . exact ContDiff.comp hf.right contDiff_neg
 
 section Measurable
 variable [MeasurableSpace α] [OpensMeasurableSpace α]
@@ -57,18 +68,18 @@ lemma memL1 (μ : Measure α := by volume_tac) [IsLocallyFiniteMeasure μ] : Mem
   . simp [snorm, snorm']
     exact (integrable hf μ).right
 
-lemma integrable_mulContinuous {f g : α → ℝ} (hf : IsBump f) (hg : Continuous g)
+lemma integrable_mul_continuous {f g : α → ℝ} (hf : IsBump f) (hg : Continuous g)
     (μ : Measure α := by volume_tac) [IsLocallyFiniteMeasure μ]
     : Integrable (f * g) μ := by
   apply Continuous.integrable_of_hasCompactSupport
   . exact Continuous.mul hf.continuous hg
   . apply HasCompactSupport.mul_right hf.left
 
-lemma integrable_continuousMul {f g : α → ℝ} (hf : Continuous f) (hg : IsBump g)
+lemma integrable_continuous_mul {f g : α → ℝ} (hf : Continuous f) (hg : IsBump g)
     (μ : Measure α := by volume_tac) [IsLocallyFiniteMeasure μ]
     : Integrable (f * g) μ := by
   rw [mul_comm]
-  apply integrable_mulContinuous <;> assumption
+  apply integrable_mul_continuous <;> assumption
 
 end Measurable
 end IsBump
