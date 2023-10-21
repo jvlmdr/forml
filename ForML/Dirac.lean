@@ -235,6 +235,10 @@ lemma tendsto_integral_Iic_bump_sub_const_mul {a : ℝ} (ha : 0 < a) {φ : ℝ �
   simp only [DiracSeq.symm]
   exact tendsto_integral_Ioi_bump_sub_const_mul ha (IsBump.comp_neg hφ) y
 
+lemma integral_eq_add_Iic_Ioc_Ioi {f : ℝ → ℝ} (hf : Integrable f) {a b : ℝ} (hab : a ≤ b) :
+    ∫ x, f x = (∫ x in Set.Iic a, f x) + (∫ x in Set.Ioc a b, f x) + (∫ x in Set.Ioi b, f x) := by
+  simp [← integral_union, hab, Integrable.integrableOn, hf]
+
 
 theorem tendsto_integral_bump_mul_deltaSeq (φ : ℝ → ℝ) (hφ : IsBump φ)
     : Tendsto (fun (n : ℕ+) => ∫ x, φ x * DiracSeq n x) atTop (nhds (φ 0)) := by
@@ -255,30 +259,23 @@ theorem tendsto_integral_bump_mul_deltaSeq (φ : ℝ → ℝ) (hφ : IsBump φ)
       exact DiracSeq.integrable (by simp)
     simp [integral_mul_left, DiracSeq.integral]
 
-  -- Have that `φ x - φ 0` is bounded since `φ x` is bounded.
-  have h_bdd := bounded_bump_sub_const hφ (φ 0)
   -- Product has finite integral (even though `φ x - φ 0` does not have compact support).
   have h_integrable {n : ℕ+} := @integrable_bump_sub_const_mul_diracSeq _ hφ (φ 0) n (by simp)
-
-  -- Consider the integral on `(a, ∞)`.
-  have hI₂ {a} (ha : 0 < a) : Tendsto (fun (n : ℕ+) => ∫ x in Set.Ioi a, (φ x - φ 0) * DiracSeq n x) atTop (nhds 0)
-  . exact tendsto_integral_Ioi_bump_sub_const_mul ha hφ (φ 0)
-  -- Same for integral on `(-∞, a)`.
-  have hI₁ {a} (ha : 0 < a) : Tendsto (fun (n : ℕ+) => ∫ x in Set.Iic (-a), (φ x - φ 0) * DiracSeq n x) atTop (nhds 0)
-  . exact tendsto_integral_Iic_bump_sub_const_mul ha hφ (φ 0)
 
   -- Eliminate the left and right parts in the limit.
   -- The challenge here is that we need `δ`, which depends on `ε`.
   -- Obtain `0 < δ` such that `|x| < δ` implies `|g x| < ε`.
-  have hg : Tendsto (fun (x : ℝ) => |φ x - φ 0|) (nhds 0) (nhds 0)
-  . sorry
-  rw [Metric.tendsto_nhds_nhds] at hg
-  simp at hg
+  have hδ : Tendsto (fun (x : ℝ) => |φ x - φ 0|) (nhds 0) (nhds 0)
+  . refine Continuous.tendsto' ?_ _ _ (by simp)
+    refine Continuous.abs ?_
+    exact Continuous.sub hφ.continuous continuous_const
+  rw [Metric.tendsto_nhds_nhds] at hδ
+  simp at hδ
   simp [Metric.tendsto_atTop]
   intro ε hε
   -- Use `ε/2` to obtain a `δ` while leaving room for the other limit.
-  specialize hg (ε/2) (half_pos hε)
-  rcases hg with ⟨δ, ⟨hδ, hδε⟩⟩
+  specialize hδ (ε/2) (half_pos hε)
+  rcases hδ with ⟨δ, ⟨hδ, hδε⟩⟩
 
   -- Separate center from left and right using `δ`.
   -- Use specific `ε` for center and arbitrary `ε` for sides.
@@ -297,14 +294,30 @@ theorem tendsto_integral_bump_mul_deltaSeq (φ : ℝ → ℝ) (hφ : IsBump φ)
     rw [← add_halves' ε]
     refine lt_of_le_of_lt ?_ (add_lt_add h_center h_sides)
     clear h_center h_sides hn N_center N_sides  -- For readability.
-    sorry  -- Looks provable.
+    have hδδ : -δ ≤ δ := by simp [hδ.le]
+    simp [integral_eq_add_Iic_Ioc_Ioi h_integrable hδδ]
+    conv =>
+      lhs; arg 1
+      conv => lhs; rw [add_comm]
+      rw [add_assoc]
+    refine le_trans (abs_add _ _) ?_
+    simp
+    refine le_of_eq ?_
+    congr
+    simp [integral_union, Set.Iic_disjoint_Ioi hδδ, h_integrable.integrableOn]
 
   apply And.intro
   -- Deal with center interval.
   . sorry  -- Looks provable.
 
   -- Deal with sides.
-  . clear hδε hε ε  -- No longer needed.
+  . -- Consider the integral on `(a, ∞)`.
+    have hI₂ {a} (ha : 0 < a) : Tendsto (fun (n : ℕ+) => ∫ x in Set.Ioi a, (φ x - φ 0) * DiracSeq n x) atTop (nhds 0)
+    . exact tendsto_integral_Ioi_bump_sub_const_mul ha hφ (φ 0)
+    -- Same for integral on `(-∞, a)`.
+    have hI₁ {a} (ha : 0 < a) : Tendsto (fun (n : ℕ+) => ∫ x in Set.Iic (-a), (φ x - φ 0) * DiracSeq n x) atTop (nhds 0)
+    . exact tendsto_integral_Iic_bump_sub_const_mul ha hφ (φ 0)
+    clear hδε hε ε  -- No longer needed.
     simp [integral_union, hδ.le, h_integrable.integrableOn]
     conv => rhs; rw [← add_zero 0]
     exact Tendsto.add (hI₁ hδ) (hI₂ hδ)
