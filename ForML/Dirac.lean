@@ -43,12 +43,14 @@ lemma DiracSeq.continuous {b : ℝ} : Continuous (DiracSeq b) := by
   refine Continuous.pow ?_ 2
   refine Continuous.mul continuous_const continuous_id
 
-lemma DiracSeq.nonneg {b : ℝ} (hb : 0 ≤ b) : ∀ x, 0 ≤ DiracSeq b x := by
-  intro x
+lemma DiracSeq.nonneg {b : ℝ} (hb : 0 ≤ b) (x : ℝ) : 0 ≤ DiracSeq b x := by
   simp [DiracSeq]
   refine mul_nonneg ?_ ?_
   . exact div_nonneg hb (sqrt_nonneg π)
-  . exact le_of_lt (Real.exp_pos _)
+  . exact le_of_lt (exp_pos _)
+
+lemma DiracSeq.nonneg_nat {b : ℕ} (x : ℝ) : 0 ≤ DiracSeq b x :=
+  DiracSeq.nonneg (Nat.cast_nonneg _) x
 
 lemma DiracSeq.integral {b : ℝ} (hb : 0 < b) : ∫ x, DiracSeq b x = 1 := by
   simp [DiracSeq]
@@ -131,37 +133,139 @@ lemma DiracSeq.setIntegral_comp_mul {k : ℝ} (hk : 0 < k) {s : Set ℝ} (hs : M
 
 /- Prove that action of Gaussian on bump approaches Dirac delta. -/
 
-theorem tendsto_integral_deltaSeq (φ : ℝ → ℝ) (hφ : IsBump φ)
+-- Couldn't find a convenient function like this in mathlib.
+lemma tendsto_zero_of_forall_abs_le {α : Type*} [Nonempty α] [SemilatticeSup α] {f g : α → ℝ}
+    (hfg : ∀ x, |f x| ≤ g x) (h : Tendsto g atTop (nhds 0)) :
+    Tendsto f atTop (nhds 0) := by
+  simp [Metric.tendsto_atTop]
+  intro ε hε
+  simp [Metric.tendsto_atTop] at h
+  specialize h ε hε
+  rcases h with ⟨a, ha⟩
+  exists a
+  intro x hx
+  exact lt_of_le_of_lt (hfg x) (lt_of_abs_lt (ha x hx))
+
+
+
+-- Coercion from ℕ+ to ℕ.
+lemma tendsto_coe_pnat_atTop : Tendsto (fun (n : ℕ+) => (n : ℕ)) atTop atTop := by
+  rw [tendsto_atTop_atTop]
+  intro a
+  exists Nat.toPNat' a
+  intro x hx
+  exact Nat.le_of_pred_lt hx
+
+-- Coercion from ℕ+ to ℝ.
+lemma tendsto_coe_coe_pnat_atTop : Tendsto (fun (n : ℕ+) => (n : ℝ)) atTop atTop :=
+  Tendsto.comp tendsto_nat_cast_atTop_atTop tendsto_coe_pnat_atTop
+
+
+lemma DiracSeq.tendsto_setIntegral_Ioi_zero {a : ℝ} (ha : 0 < a)
+    : Tendsto (fun (n : ℕ+) => ∫ x in Set.Ioi a, DiracSeq n x) atTop (nhds 0) := by
+  -- Rewrite integral as difference of integrals.
+  have {n : ℕ+} : ∫ (x : ℝ) in Set.Ioi a, DiracSeq n x
+    = (∫ (x : ℝ) in Set.Ioi 0, DiracSeq n x) - (∫ x in (0:ℝ)..a, DiracSeq n x)
+  . rw [eq_sub_iff_add_eq']
+    simp [intervalIntegral.integral_of_le ha.le]
+    rw [← integral_union]
+    . simp [Set.Ioc_union_Ioi_eq_Ioi ha.le]
+    . simp [disjoint_iff]
+    . exact measurableSet_Ioi
+    . apply Integrable.integrableOn
+      exact DiracSeq.integrable (by simp)
+    . apply Integrable.integrableOn
+      exact DiracSeq.integrable (by simp)
+  simp [this]
+  clear this
+  conv => rhs; rw [← sub_self (1/2)]
+  apply Tendsto.sub
+  . -- Use existing result for integral on [0, ∞).
+    simp [DiracSeq.integral_Ioi]
+  . -- Move scaling from integrand to interval.
+    conv => arg 1; intro b; arg 1; intro x; rw [DiracSeq.eq_comp_mul]
+    simp
+    simp [intervalIntegral.integral_comp_mul_left]
+    -- Replace (1/2) in rhs with integral.
+    rw [inv_eq_one_div, ← DiracSeq.integral_Ioi zero_lt_one]
+    -- Integral on [0, c) tends to integral on [0, ∞) as c tends to ∞.
+    apply intervalIntegral_tendsto_integral_Ioi
+    . apply Integrable.integrableOn
+      exact DiracSeq.integrable zero_lt_one
+    . exact Tendsto.atTop_mul_const ha tendsto_coe_coe_pnat_atTop
+
+
+lemma bounded_bump_sub_const {φ : ℝ → ℝ} (hφ : IsBump φ) (y : ℝ) : ∃ M, ∀ x, ‖φ x - y‖ ≤ M := by
+  rcases hφ.bounded with ⟨C, hC⟩
+  exists C + ‖y‖
+  intro x
+  refine le_trans (norm_sub_le _ _) ?_
+  simp
+  exact hC x
+
+lemma integrable_bump_sub_const_mul_diracSeq {φ : ℝ → ℝ} (hφ : IsBump φ) (y : ℝ) {b : ℝ} (hb : 0 < b) :
+    Integrable (fun x => (φ x - y) * DiracSeq b x) := by
+  refine Integrable.bdd_mul ?_ ?_ ?_
+  . exact DiracSeq.integrable hb
+  . refine Continuous.aestronglyMeasurable ?_
+    exact Continuous.sub hφ.continuous continuous_const
+  . exact bounded_bump_sub_const hφ y
+
+lemma tendsto_integral_Ioi_bump_sub_const_mul {a : ℝ} (ha : 0 < a) {φ : ℝ → ℝ} (hφ : IsBump φ) (y : ℝ) :
+    Tendsto (fun (n : ℕ+) => ∫ x in Set.Ioi a, (φ x - y) * DiracSeq n x) atTop (nhds 0) := by
+  rcases bounded_bump_sub_const hφ y with ⟨M, hM⟩  -- Get explicit bound.
+  suffices (n : ℕ+) : |∫ x in Set.Ioi a, (φ x - y) * DiracSeq n x| ≤ M * ∫ x in Set.Ioi a, DiracSeq n x
+  . apply tendsto_zero_of_forall_abs_le this
+    conv => arg 3; rw [← mul_zero M]
+    exact Tendsto.const_mul _ (DiracSeq.tendsto_setIntegral_Ioi_zero ha)
+  rw [← norm_eq_abs]
+  rw [← integral_mul_left]
+  refine norm_integral_le_of_norm_le ?_ ?_
+  . refine Integrable.integrableOn ?_
+    exact Integrable.const_mul (DiracSeq.integrable (by simp)) _
+  . refine Filter.eventually_of_forall ?_
+    intro x
+    simp
+    rw [abs_of_nonneg (DiracSeq.nonneg_nat _)]
+    refine mul_le_mul_of_nonneg_right (hM x) (DiracSeq.nonneg_nat x)
+
+lemma tendsto_integral_Iic_bump_sub_const_mul {a : ℝ} (ha : 0 < a) {φ : ℝ → ℝ} (hφ : IsBump φ) (y : ℝ) :
+    Tendsto (fun (n : ℕ+) => ∫ x in Set.Iic (-a), (φ x - y) * DiracSeq n x) atTop (nhds 0) := by
+  simp only [← integral_comp_neg_Ioi]
+  simp only [DiracSeq.symm]
+  exact tendsto_integral_Ioi_bump_sub_const_mul ha (IsBump.comp_neg hφ) y
+
+
+theorem tendsto_integral_bump_mul_deltaSeq (φ : ℝ → ℝ) (hφ : IsBump φ)
     : Tendsto (fun (n : ℕ+) => ∫ x, φ x * DiracSeq n x) atTop (nhds (φ 0)) := by
   -- Instead show that `φ x - φ 0` tends to 0.
-  suffices : Tendsto (fun (n : ℕ+) => ∫ x, (φ x - φ 0) * DiracSeq n x) atTop (nhds 0)
-  . sorry
+  suffices h_tendsto : Tendsto (fun (n : ℕ+) => ∫ x, (φ x - φ 0) * DiracSeq n x) atTop (nhds 0)
+  . -- No re-write version of `Tendsto.sub_const`?
+    conv => arg 1; intro n; rw [← sub_add_cancel (∫ x, _) (φ 0)]
+    conv => arg 3; rw [← sub_add_cancel (φ 0) (φ 0)]
+    refine Tendsto.add_const _ ?_
+    simp
+    refine Filter.Tendsto.congr ?_ h_tendsto
+    intro n
+    simp [sub_mul]
+    rw [integral_sub]
+    rotate_left
+    . exact IsBump.integrable_mul_continuous hφ DiracSeq.continuous
+    . refine Integrable.const_mul ?_ _
+      exact DiracSeq.integrable (by simp)
+    simp [integral_mul_left, DiracSeq.integral]
 
   -- Have that `φ x - φ 0` is bounded since `φ x` is bounded.
-  have h_bdd : ∃ M, ∀ x, ‖φ x - φ 0‖ ≤ M
-  . rcases hφ.bounded with ⟨C, hC⟩
-    exists C + ‖φ 0‖
-    intro x
-    refine le_trans (norm_sub_le _ _) ?_
-    simp
-    exact hC x
+  have h_bdd := bounded_bump_sub_const hφ (φ 0)
   -- Product has finite integral (even though `φ x - φ 0` does not have compact support).
-  have h_integrable {n : ℕ+} : Integrable (fun x => (φ x - φ 0) * DiracSeq n x)
-  . refine Integrable.bdd_mul ?_ ?_ h_bdd
-    . refine DiracSeq.integrable ?_
-      simp
-    . refine Continuous.aestronglyMeasurable ?_
-      exact Continuous.sub hφ.continuous continuous_const
+  have h_integrable {n : ℕ+} := @integrable_bump_sub_const_mul_diracSeq _ hφ (φ 0) n (by simp)
 
   -- Consider the integral on `(a, ∞)`.
-  -- This is only true for large enough `N`.
   have hI₂ {a} (ha : 0 < a) : Tendsto (fun (n : ℕ+) => ∫ x in Set.Ioi a, (φ x - φ 0) * DiracSeq n x) atTop (nhds 0)
-  . -- rcases h_bdd with ⟨M, hM⟩  -- Get explicit bound.
-    sorry
-
+  . exact tendsto_integral_Ioi_bump_sub_const_mul ha hφ (φ 0)
   -- Same for integral on `(-∞, a)`.
   have hI₁ {a} (ha : 0 < a) : Tendsto (fun (n : ℕ+) => ∫ x in Set.Iic (-a), (φ x - φ 0) * DiracSeq n x) atTop (nhds 0)
-  . sorry
+  . exact tendsto_integral_Iic_bump_sub_const_mul ha hφ (φ 0)
 
   -- Eliminate the left and right parts in the limit.
   -- The challenge here is that we need `δ`, which depends on `ε`.
