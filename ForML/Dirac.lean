@@ -49,9 +49,6 @@ lemma DiracSeq.nonneg {b : ℝ} (hb : 0 ≤ b) (x : ℝ) : 0 ≤ DiracSeq b x :=
   . exact div_nonneg hb (sqrt_nonneg π)
   . exact le_of_lt (exp_pos _)
 
-lemma DiracSeq.nonneg_nat {b : ℕ} (x : ℝ) : 0 ≤ DiracSeq b x :=
-  DiracSeq.nonneg (Nat.cast_nonneg _) x
-
 lemma DiracSeq.integral {b : ℝ} (hb : 0 < b) : ∫ x, DiracSeq b x = 1 := by
   simp [DiracSeq]
   simp [integral_mul_left]
@@ -68,8 +65,15 @@ lemma DiracSeq.integral {b : ℝ} (hb : 0 < b) : ∫ x, DiracSeq b x = 1 := by
   apply ne_of_gt
   exact mul_pos sqrt_pi_pos hb
 
-lemma DiracSeq.integrable {b : ℝ} (hb : 0 < b) : Integrable (fun x => DiracSeq b x) := by
-  exact integrable_of_integral_eq_one (DiracSeq.integral hb)
+lemma DiracSeq.integrable {b : ℝ} (hb : 0 < b) : Integrable (fun x => DiracSeq b x) :=
+  integrable_of_integral_eq_one (DiracSeq.integral hb)
+
+lemma DiracSeq.nonneg_nat {b : ℕ} (x : ℝ) : 0 ≤ DiracSeq b x :=
+  DiracSeq.nonneg (Nat.cast_nonneg _) x
+lemma DiracSeq.integral_pnat {b : ℕ+} : ∫ x, DiracSeq b x = 1 :=
+  DiracSeq.integral (by simp)
+lemma DiracSeq.integrable_pnat {n : ℕ+} : Integrable (fun x => DiracSeq n x) :=
+  DiracSeq.integrable (by simp)
 
 lemma integral_symm {f : ℝ → ℝ} (hf : Integrable f) (h_symm : ∀ x, f (-x) = f x) :
     2 * ∫ x in Set.Ioi 0, f x = ∫ x, f x := by
@@ -100,8 +104,7 @@ lemma DiracSeq.integral_Ioi {b : ℝ} (hb : 0 < b) : ∫ x in Set.Ioi 0, DiracSe
   rw [integral_symm (DiracSeq.integrable hb) (DiracSeq.symm b)]
   exact DiracSeq.integral hb
 
-
-lemma DiracSeq.intervalIntegral_comp_mul (s a b : ℝ) -- (hs : 0 < s) (ha : 0 < a) (hb : a ≤ b)
+lemma DiracSeq.intervalIntegral_comp_mul (s a b : ℝ)
     : ∫ x in a..b, DiracSeq s x =
       ∫ x in s*a..s*b, DiracSeq 1 x := by
   simp [DiracSeq]
@@ -130,6 +133,13 @@ lemma DiracSeq.setIntegral_comp_mul {k : ℝ} (hk : 0 < k) {s : Set ℝ} (hs : M
   simp [← mul_assoc]
   rfl
 
+lemma DiracSeq.support {b : ℝ} (hb : b ≠ 0) : Function.support (DiracSeq b) = Set.univ := by
+  simp [DiracSeq]
+  ext x
+  simp [hb, sqrt_pi_pos.ne']
+  rw [← ne_eq]
+  exact ne_of_gt (exp_pos _)
+
 
 /- Prove that action of Gaussian on bump approaches Dirac delta. -/
 
@@ -146,8 +156,6 @@ lemma tendsto_zero_of_forall_abs_le {α : Type*} [Nonempty α] [SemilatticeSup �
   intro x hx
   exact lt_of_le_of_lt (hfg x) (lt_of_abs_lt (ha x hx))
 
-
-
 -- Coercion from ℕ+ to ℕ.
 lemma tendsto_coe_pnat_atTop : Tendsto (fun (n : ℕ+) => (n : ℕ)) atTop atTop := by
   rw [tendsto_atTop_atTop]
@@ -160,6 +168,16 @@ lemma tendsto_coe_pnat_atTop : Tendsto (fun (n : ℕ+) => (n : ℕ)) atTop atTop
 lemma tendsto_coe_coe_pnat_atTop : Tendsto (fun (n : ℕ+) => (n : ℝ)) atTop atTop :=
   Tendsto.comp tendsto_nat_cast_atTop_atTop tendsto_coe_pnat_atTop
 
+lemma DiracSeq.set_integral_ne_zero {b : ℝ} (hb : 0 < b) {s : Set ℝ} (hs : 0 < volume s) :
+    ∫ x in s, DiracSeq b x ≠ 0 := by
+  refine ne_of_gt ?_
+  rw [set_integral_pos_iff_support_of_nonneg_ae]
+  . simp [DiracSeq.support hb.ne']
+    exact hs
+  . refine Filter.eventually_of_forall ?_
+    simp
+    exact DiracSeq.nonneg hb.le
+  . exact Integrable.integrableOn (DiracSeq.integrable hb)
 
 lemma DiracSeq.tendsto_setIntegral_Ioi_zero {a : ℝ} (ha : 0 < a)
     : Tendsto (fun (n : ℕ+) => ∫ x in Set.Ioi a, DiracSeq n x) atTop (nhds 0) := by
@@ -308,9 +326,47 @@ theorem tendsto_integral_bump_mul_deltaSeq (φ : ℝ → ℝ) (hφ : IsBump φ)
 
   apply And.intro
   -- Deal with center interval.
-  . sorry  -- Looks provable.
+  . exists 1  -- True for all.
+    intro n
+    simp
+    -- Switch to `Ioo` for `|x| < δ`.
+    rw [integral_Ioc_eq_integral_Ioo]
+    rw [← norm_eq_abs]
+    refine lt_of_le_of_lt (@norm_integral_le_of_norm_le _ _ _ _ _ _ _
+      (fun x => ε / 2 * DiracSeq n x) ?_ ?_) ?_
+    . refine Integrable.integrableOn ?_
+      exact Integrable.const_mul DiracSeq.integrable_pnat _
+    . simp
+      rw [eventually_inf_principal]
+      refine ae_of_all _ ?_
+      intro x hx
+      simp [abs_of_nonneg, DiracSeq.nonneg_nat]
+      refine mul_le_mul_of_nonneg_right ?_ (DiracSeq.nonneg_nat _)
+      refine le_of_lt ?_
+      apply hδε
+      simp [abs_lt]
+      exact hx
+    . simp [integral_mul_left]
+      rw [mul_lt_iff_lt_one_right (half_pos hε)]
+      rw [← @DiracSeq.integral_pnat n]
+      refine Ne.lt_of_le ?_ ?_
+      . symm
+        rw [← sub_ne_zero]
+        rw [← integral_add_compl (by simp : MeasurableSet (Set.Ioo (-δ) δ)) DiracSeq.integrable_pnat]
+        rw [@add_sub_cancel']
+        simp
+        rw [← ne_eq]
+        refine DiracSeq.set_integral_ne_zero (by simp) ?_
+        suffices : Set.Ici δ ⊆ (Set.Ioo (-δ) δ)ᶜ
+        . exact lt_of_lt_of_le (by simp) (measure_mono this)
+        rw [Set.subset_def]
+        simp
+        intro x hx _
+        exact hx
+      . refine set_integral_le_integral (DiracSeq.integrable_pnat) ?_
+        exact Filter.eventually_of_forall DiracSeq.nonneg_nat
 
-  -- Deal with sides.
+  -- Deal with side intervals.
   . -- Consider the integral on `(a, ∞)`.
     have hI₂ {a} (ha : 0 < a) : Tendsto (fun (n : ℕ+) => ∫ x in Set.Ioi a, (φ x - φ 0) * DiracSeq n x) atTop (nhds 0)
     . exact tendsto_integral_Ioi_bump_sub_const_mul ha hφ (φ 0)
