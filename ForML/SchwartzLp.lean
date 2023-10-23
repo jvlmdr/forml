@@ -214,24 +214,25 @@ lemma SchwartzMap.mem_Lp (f : 𝓢(E, F)) {p : NNReal} (hp : 1 ≤ p) : Memℒp 
   simp at hC
   sorry  -- Looks good.
 
--- TODO: Is there a way to define this from `StronglyMeasurable` instead of `AEStronglyMeasurable`?
--- Would that make things easier later?
-noncomputable def SchwartzMap.toAEEqFun [BorelSpace E] (f : 𝓢(E, F)) (μ : Measure E) : E →ₘ[μ] F :=
-  -- AEEqFun.mk f.toFun f.continuous.stronglyMeasurable.aestronglyMeasurable
-  f.toContinuousMap.toAEEqFun μ
+-- Didn't need this to define `toLp`; just use `Memℒp.toLp`.
+-- Could use `SchwartzMap.toContinuousMap.toAEEqFun`; it needs `[BorelSpace E]` (and `noncomputable`).
+def SchwartzMap.toAEEqFun (f : 𝓢(E, F)) (μ : Measure E) : E →ₘ[μ] F :=
+  AEEqFun.mk f.toFun f.continuous.aestronglyMeasurable
 
-end SecondCountable
+lemma SchwartzMap.coeFn_toAEEqFun (f : 𝓢(E, F)) (μ : Measure E) :
+    f.toAEEqFun μ =ᵐ[μ] f.toFun :=
+  AEEqFun.coeFn_mk _ _
 
-noncomputable def SchwartzMap.toLp (f : 𝓢(ℝ, F)) {p : NNReal} (hp : 1 ≤ p) : Lp F p (volume : Measure ℝ) where
-  val := f.toContinuousMap.toAEEqFun (volume : Measure ℝ)
-  property := by
-    rw [Lp.mem_Lp_iff_memℒp]
-    -- How to show that `Memℒp f ↑p` implies...
-    -- `Memℒp ↑(ContinuousMap.toAEEqFun volume (toContinuousMap f)) ↑p`?
-    sorry
+-- TODO: Use `[Fact (1 ≤ p)]` here?
+def SchwartzMap.toLp (f : 𝓢(E, F)) {p : NNReal} (hp : 1 ≤ p) :
+    Lp F p (by volume_tac : Measure E) :=
+  Memℒp.toLp f.toFun (SchwartzMap.mem_Lp 𝕜 f hp)
 
-end Lp  -- [SMulCommClass ℝ 𝕜 F]
+lemma SchwartzMap.coeFn_toLp (f : 𝓢(E, F)) {p : NNReal} (hp : 1 ≤ p) :
+    f.toLp 𝕜 hp =ᵐ[volume] f :=
+  Memℒp.coeFn_toLp _
 
+end SecondCountable  -- [MeasureSpace E] [SecondCountableTopologyEither E F]
 
 -- TODO: Generalize to `𝒮(E, F)`.
 -- lemma SchwartzMap.integrable [MeasureSpace E] {f : 𝓢(E, F)} : Integrable f := sorry
@@ -240,9 +241,11 @@ end Lp  -- [SMulCommClass ℝ 𝕜 F]
 -- Cannot use `BoundedContinuousFunction.integrable` as it requires `IsFiniteMeasure μ`.
 lemma SchwartzMap.integrable {f : 𝓢(ℝ, F)} : Integrable f := by
   have hp : (1 : NNReal) ≤ 1 := by simp
-  have := L1.integrable_coeFn (f.toLp hp)
-  -- Need to show equivalent.
-  sorry
+  refine Integrable.congr (L1.integrable_coeFn (f.toLp 𝕜 hp)) ?_
+  exact SchwartzMap.coeFn_toLp 𝕜 f hp
+
+end Lp  -- [SMulCommClass ℝ 𝕜 F]
+
 
 -- Is it correct to use `c : 𝕜`?
 -- TODO: Why do we need to define `cont` here?
