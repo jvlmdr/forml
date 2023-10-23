@@ -232,17 +232,14 @@ lemma SchwartzMap.coeFn_toLp (f : 𝓢(E, F)) {p : NNReal} (hp : 1 ≤ p) :
     f.toLp 𝕜 hp =ᵐ[volume] f :=
   Memℒp.coeFn_toLp _
 
-end SecondCountable  -- [MeasureSpace E] [SecondCountableTopologyEither E F]
-
--- TODO: Generalize to `𝒮(E, F)`.
--- lemma SchwartzMap.integrable [MeasureSpace E] {f : 𝓢(E, F)} : Integrable f := sorry
-
 -- Use `Memℒp f 1` to provide `Integrable`.
 -- Cannot use `BoundedContinuousFunction.integrable` as it requires `IsFiniteMeasure μ`.
-lemma SchwartzMap.integrable {f : 𝓢(ℝ, F)} : Integrable f := by
+lemma SchwartzMap.integrable {f : 𝓢(E, F)} : Integrable f := by
   have hp : (1 : NNReal) ≤ 1 := by simp
   refine Integrable.congr (L1.integrable_coeFn (f.toLp 𝕜 hp)) ?_
   exact SchwartzMap.coeFn_toLp 𝕜 f hp
+
+end SecondCountable  -- [MeasureSpace E] [SecondCountableTopologyEither E F]
 
 end Lp  -- [SMulCommClass ℝ 𝕜 F]
 
