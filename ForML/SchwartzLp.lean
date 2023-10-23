@@ -208,6 +208,13 @@ lemma integrable {f : 𝓢(E, F)} : Integrable f := by
   refine Integrable.congr (L1.integrable_coeFn (f.toLp 𝕜 1)) ?_
   exact coeFn_toLp 𝕜 f
 
+lemma integrable_essSup_smul
+    {f : E → 𝕜}
+    (hf_meas : MeasureTheory.AEStronglyMeasurable f (volume : Measure E))
+    (hf_ess_sup : essSup (fun x => (‖f x‖₊ : ENNReal)) (volume : Measure E) ≠ ⊤)
+    (φ : 𝓢(E, F)) :
+    Integrable (fun x => f x • φ x) :=
+  Integrable.essSup_smul (SchwartzMap.integrable 𝕜) hf_meas hf_ess_sup
 
 end Integral
 end SchwartzMap
@@ -222,14 +229,6 @@ variable (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass �
 
 variable [MeasureSpace E] [OpensMeasurableSpace E] [SecondCountableTopologyEither E F]
 variable [FiniteDimensional ℝ E] [BorelSpace E] [(volume : Measure E).IsAddHaarMeasure]
-
-lemma integrable_essSup_smul
-    {f : E → 𝕜}
-    (hf_meas : MeasureTheory.AEStronglyMeasurable f (volume : Measure E))
-    (hf_ess_sup : essSup (fun x => (‖f x‖₊ : ENNReal)) (volume : Measure E) ≠ ⊤)
-    (φ : 𝓢(E, F)) :
-    Integrable (fun x => f x • φ x) :=
-  Integrable.essSup_smul (SchwartzMap.integrable 𝕜) hf_meas hf_ess_sup
 
 /- Define a distribution from a bounded measurable function by integration. -/
 noncomputable def integral_essSup_smul (f : E → 𝕜)
