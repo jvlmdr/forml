@@ -35,7 +35,6 @@ namespace SchwartzMap
 variable {E F : Type*}
 variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 variable [NormedAddCommGroup F] [NormedSpace ℝ F]
-
 variable (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
 /- Exposes alternative form of Schwartz decay condition.
@@ -210,6 +209,38 @@ lemma integrable {f : 𝓢(E, F)} : Integrable f := by
   exact coeFn_toLp 𝕜 f
 
 
+end Integral
+end SchwartzMap
+
+
+namespace TemperedDistribution
+
+variable {E F : Type*}
+variable [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable [NormedAddCommGroup F] [NormedSpace ℝ F]
+variable (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+
+variable [MeasureSpace E] [OpensMeasurableSpace E] [SecondCountableTopologyEither E F]
+variable [FiniteDimensional ℝ E] [BorelSpace E] [(volume : Measure E).IsAddHaarMeasure]
+
+lemma integrable_essSup_smul
+    {f : E → 𝕜}
+    (hf_meas : MeasureTheory.AEStronglyMeasurable f (volume : Measure E))
+    (hf_ess_sup : essSup (fun x => (‖f x‖₊ : ENNReal)) (volume : Measure E) ≠ ⊤)
+    (φ : 𝓢(E, F)) :
+    Integrable (fun x => f x • φ x) :=
+  Integrable.essSup_smul (SchwartzMap.integrable 𝕜) hf_meas hf_ess_sup
+
+/- Define a distribution from a bounded measurable function by integration. -/
+noncomputable def integral_essSup_smul (f : E → 𝕜)
+    (hf_meas : MeasureTheory.AEStronglyMeasurable f (volume : Measure E))
+    (hf_ess_sup : essSup (fun x => (‖f x‖₊ : ENNReal)) (volume : Measure E) ≠ ⊤) :
+    𝓢(E, F) →L[𝕜] F where
+  toFun φ := ∫ x, f x • φ x
+  map_add' φ φ' := by sorry
+  map_smul' := by sorry
+  cont := by sorry
+
 -- Is it correct to use `c : 𝕜`?
 -- TODO: Why do we need to define `cont` here?
 lemma const (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
@@ -219,8 +250,4 @@ lemma const (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClas
   map_smul' := sorry
   cont := sorry
 
-end Integral  -- [MeasureSpace E] [SecondCountableTopologyEither E F]
-
--- end Lp  -- [SMulCommClass ℝ 𝕜 F]
-
-end SchwartzMap
+namespace TemperedDistribution
