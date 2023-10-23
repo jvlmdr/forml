@@ -78,9 +78,9 @@ section Lp
 
 variable (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
--- Nothing new, just gives easy access to alternative bound.
+-- Nothing new, just gives easy access to alternative definition.
 -- This bound can be combined with `integrable_one_add_norm` from JapaneseBracket.
--- This bound resembles that of `Function.HasTemperateGrowth`.
+-- TODO: This bound resembles that of `Function.HasTemperateGrowth`?
 lemma SchwartzMap.decay_one_add (f : 𝓢(E, F)) :
     ∀ (k n : ℕ), ∃ C, ∀ x, HPow.hPow (1 + ‖x‖) k * ‖iteratedFDeriv ℝ n f x‖ ≤ C := by
   intro k n
@@ -88,11 +88,12 @@ lemma SchwartzMap.decay_one_add (f : 𝓢(E, F)) :
   simp at this
   use HPow.hPow (2 : ℝ) k * Finset.sup (Finset.Iic (k, n)) (fun m => SchwartzMap.seminorm 𝕜 m.1 m.2) f
 
-lemma SchwartzMap.decay_one_add' (f : 𝓢(E, F)) (p : ℝ) :
-    ∀ (n : ℕ), ∃ C, 0 ≤ C ∧ ∀ x, ‖iteratedFDeriv ℝ n f x‖ ≤ C * (1 + ‖x‖) ^ (-p) := by
+-- Only interesting for `r` positive?
+lemma SchwartzMap.decay_one_add' (f : 𝓢(E, F)) (r : ℝ) :
+    ∀ (n : ℕ), ∃ C, 0 ≤ C ∧ ∀ x, ‖iteratedFDeriv ℝ n f x‖ ≤ C * (1 + ‖x‖) ^ (-r) := by
   intro n
-  -- Use any integer `k` such that `p ≤ k`.
-  generalize hk : ⌈p⌉₊ = k
+  -- Use any integer `k` such that `r ≤ k`.
+  generalize hk : ⌈r⌉₊ = k
   rcases SchwartzMap.decay_one_add 𝕜 f k n with ⟨C, hC⟩
   use C
   refine And.intro ?_ ?_
@@ -112,39 +113,33 @@ lemma SchwartzMap.decay_one_add' (f : 𝓢(E, F)) (p : ℝ) :
     simp [← hk]
     exact Nat.le_ceil _
 
--- Maybe it's more convenient to use this form?
-lemma SchwartzMap.decay_one_add'' (f : 𝓢(E, F)) (p : NNReal) :
-    ∀ (n : ℕ), ∃ C, 0 ≤ C ∧ ∀ x, ‖iteratedFDeriv ℝ n f x‖ ^ p ≤ C * (1 + ‖x‖) := by
+-- Maybe it's more convenient to use this form.
+-- Seems wild that we can choose a `q`? Maybe just prove for `q = -1`?
+-- TODO: Do we need constraint `0 < p`?
+lemma SchwartzMap.norm_iteratedFDeriv_le_pow_one_add_norm (f : 𝓢(E, F)) {p : ℝ} (hp : 0 < p) (q : ℝ) :
+    ∀ (n : ℕ), ∃ C, 0 ≤ C ∧ ∀ x, ‖iteratedFDeriv ℝ n f x‖ ^ p ≤ C * (1 + ‖x‖) ^ (-q) := by
   intro n
-  -- Use any integer `k` such that `p ≤ k`.
-  generalize hk : ⌈p⌉₊ = k
-  rcases SchwartzMap.decay_one_add 𝕜 f k n with ⟨C, hC⟩
-  have hC_nonneg : 0 ≤ C
-  . specialize hC 0  -- Use any `E`.
-    simp at hC
-    exact le_trans (norm_nonneg _) hC
-  have hCp_nonneg : 0 ≤ C ^ p := Real.rpow_nonneg_of_nonneg hC_nonneg p
+  generalize hr : q / p = r
+  rcases decay_one_add' 𝕜 f r n with ⟨C, ⟨hC_nonneg, hC⟩⟩
   use C ^ p
-  refine And.intro hCp_nonneg ?_
+  have hC_pow : 0 ≤ C ^ p := Real.rpow_nonneg_of_nonneg hC_nonneg _
+  refine And.intro hC_pow ?_
   intro x
   specialize hC x
-  -- Put lhs and rhs to power of `p`.
-  have h_pos : 0 < 1 + ‖x‖ := add_pos_of_pos_of_nonneg zero_lt_one (norm_nonneg _)
-  -- have h_lhs_nonneg : 0 ≤ HPow.hPow (1 + ‖x‖) k * ‖iteratedFDeriv ℝ n f x‖
-  -- . exact mul_nonneg (pow_nonneg h_pos.le k) (norm_nonneg _)
-  have : (HPow.hPow (1 + ‖x‖) k * ‖iteratedFDeriv ℝ n f x‖) ^ p ≤ C ^ p
-  . refine Real.rpow_le_rpow ?_ hC (NNReal.coe_nonneg p)
-    exact mul_nonneg (pow_nonneg h_pos.le k) (norm_nonneg _)
-  rw [Real.mul_rpow (pow_nonneg h_pos.le k) (norm_nonneg _)] at this
-  rw [← le_div_iff' (Real.rpow_pos_of_pos (pow_pos h_pos k) p)] at this
-  refine le_trans this ?_
-  rw [← Real.rpow_nat_cast]
-  rw [← Real.rpow_mul h_pos.le]
-  rw [div_eq_inv_mul]
-  rw [mul_comm]
-  refine mul_le_mul_of_nonneg_left ?_ hCp_nonneg
-  rw [← Real.rpow_neg h_pos.le]
-  sorry
+  have hq : q = p * r := by rw [← hr, mul_div, mul_div_cancel_left _ hp.ne']
+  rw [hq]
+  sorry  -- Looks good.
+
+lemma SchwartzMap.norm_iteratedFDeriv_le_inv_one_add_norm (f : 𝓢(E, F)) {p : ℝ} (hp : 0 < p) :
+    ∀ (n : ℕ), ∃ C, 0 ≤ C ∧ ∀ x, ‖iteratedFDeriv ℝ n f x‖ ^ p ≤ C * (1 + ‖x‖)⁻¹ := by
+  simp_rw [← Real.rpow_neg_one]
+  exact norm_iteratedFDeriv_le_pow_one_add_norm 𝕜 f hp _  -- Can't pass (-1) here?
+
+lemma SchwartzMap.pow_norm_le_inv_one_add_norm (f : 𝓢(E, F)) {p : ℝ} (hp : 0 < p) :
+    ∃ C, 0 ≤ C ∧ ∀ x, ‖f x‖ ^ p ≤ C * (1 + ‖x‖)⁻¹ := by
+  have := norm_iteratedFDeriv_le_inv_one_add_norm 𝕜 f hp 0
+  simp at this
+  exact this
 
 -- TODO: Generalize to `Memℒp _ ⊤`.
 -- TODO: Generalise from `𝓢(ℝ, F)` to `𝓢(E, F)` using `iteratedFDeriv` form
@@ -198,19 +193,41 @@ theorem SchwartzMap.iteratedDeriv_mem_Lp (f : 𝓢(ℝ, F)) {p : NNReal} (hp : 1
     refine Real.toNNReal_le_toNNReal ?_
     sorry
 
-lemma SchwartzMap.aestronglyMeasurable [MeasurableSpace E] [OpensMeasurableSpace E] [SecondCountableTopologyEither E F]
-    (f : 𝓢(E, F)) (μ : Measure E) : AEStronglyMeasurable f μ :=
-  Continuous.aestronglyMeasurable f.continuous
+section SecondCountable  -- For going from Continuous to StronglyMeasurable.
+
+-- variable [MeasurableSpace E] [OpensMeasurableSpace E]
+variable [MeasureSpace E] [OpensMeasurableSpace E] [SecondCountableTopologyEither E F]
+
+/-
+
+Note: Only works for `volume` (inherited from `integrable_one_add_norm`).
+
+TODO: Generalize to `Memℒp f ⊤`.
+-/
+lemma SchwartzMap.mem_Lp (f : 𝓢(E, F)) {p : NNReal} (hp : 1 ≤ p) : Memℒp f p := by
+  -- TODO: Just use `SchwartzMap.iteratedDeriv_mem_Lp` one generalized to `𝓢(E, F)`?
+  refine And.intro f.continuous.aestronglyMeasurable ?_
+  have hp_pos : 0 < p := lt_of_lt_of_le zero_lt_one hp
+  simp [snorm, hp_pos.ne', snorm']
+  refine ENNReal_rpow_lt_top (inv_pos_of_pos hp_pos) ?_
+  rcases SchwartzMap.pow_norm_le_inv_one_add_norm 𝕜 f hp_pos with ⟨C, ⟨hC_nonneg, hC⟩⟩
+  simp at hC
+  sorry  -- Looks good.
 
 -- TODO: Is there a way to define this from `StronglyMeasurable` instead of `AEStronglyMeasurable`?
 -- Would that make things easier later?
-def SchwartzMap.toAEEqFun [MeasurableSpace E] [OpensMeasurableSpace E] [SecondCountableTopologyEither E F]
-    (f : 𝓢(E, F)) (μ : Measure E) : AEEqFun E F μ := AEEqFun.mk f.toFun (f.aestronglyMeasurable μ)
+noncomputable def SchwartzMap.toAEEqFun [BorelSpace E] (f : 𝓢(E, F)) (μ : Measure E) : E →ₘ[μ] F :=
+  -- AEEqFun.mk f.toFun f.continuous.stronglyMeasurable.aestronglyMeasurable
+  f.toContinuousMap.toAEEqFun μ
 
-def SchwartzMap.toLp (f : 𝓢(ℝ, F)) {p : NNReal} (hp : 1 ≤ p) : Lp F p (volume : Measure ℝ) where
-  val := f.toAEEqFun volume
+end SecondCountable
+
+noncomputable def SchwartzMap.toLp (f : 𝓢(ℝ, F)) {p : NNReal} (hp : 1 ≤ p) : Lp F p (volume : Measure ℝ) where
+  val := f.toContinuousMap.toAEEqFun (volume : Measure ℝ)
   property := by
-    simp [SchwartzMap.toAEEqFun]
+    rw [Lp.mem_Lp_iff_memℒp]
+    -- How to show that `Memℒp f ↑p` implies...
+    -- `Memℒp ↑(ContinuousMap.toAEEqFun volume (toContinuousMap f)) ↑p`?
     sorry
 
 end Lp  -- [SMulCommClass ℝ 𝕜 F]
