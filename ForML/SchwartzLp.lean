@@ -210,15 +210,6 @@ lemma integrable {f : 𝓢(E, F)} : Integrable f := by
   exact coeFn_toLp 𝕜 f
 
 
--- Is it correct to use `c : 𝕜`?
--- TODO: Why do we need to define `cont` here?
-lemma const (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
-    (c : 𝕜) : 𝓢(E, F) →L[𝕜] F where
-  toFun f := c • ∫ x, f x
-  map_add' := sorry
-  map_smul' := sorry
-  cont := sorry
-
 end Integral  -- [MeasureSpace E] [SecondCountableTopologyEither E F]
 
 -- end Lp  -- [SMulCommClass ℝ 𝕜 F]
