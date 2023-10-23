@@ -35,7 +35,6 @@ namespace SchwartzMap
 variable {E F : Type*}
 variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 variable [NormedAddCommGroup F] [NormedSpace ℝ F]
-variable (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
 /- Exposes alternative form of Schwartz decay condition.
 
@@ -47,9 +46,9 @@ TODO: Add proof of equivalence of conditions?
 lemma decay₁ (f : 𝓢(E, F)) :
     ∀ (k n : ℕ), ∃ C, ∀ x, HPow.hPow (1 + ‖x‖) k * ‖iteratedFDeriv ℝ n f x‖ ≤ C := by
   intro k n
-  have := @one_add_le_sup_seminorm_apply 𝕜 E F _ _ _ _ _ _ _ ⟨k, n⟩ k n (by simp) (by simp) f
+  have := @one_add_le_sup_seminorm_apply ℝ E F _ _ _ _ _ _ _ ⟨k, n⟩ k n (by simp) (by simp) f
   simp at this
-  use HPow.hPow (2 : ℝ) k * Finset.sup (Finset.Iic (k, n)) (fun m => SchwartzMap.seminorm 𝕜 m.1 m.2) f
+  use HPow.hPow (2 : ℝ) k * Finset.sup (Finset.Iic (k, n)) (fun m => SchwartzMap.seminorm ℝ m.1 m.2) f
 
 /- Re-arranged version of `decay₁`. -/
 lemma norm_iteratedFDeriv_le_pow_one_add_norm (f : 𝓢(E, F)) (r : ℝ) :
@@ -59,7 +58,7 @@ lemma norm_iteratedFDeriv_le_pow_one_add_norm (f : 𝓢(E, F)) (r : ℝ) :
   intro n
   -- Use any integer `k` such that `r ≤ k`.
   generalize hk : ⌈r⌉₊ = k
-  rcases decay₁ 𝕜 f k n with ⟨C, hC⟩
+  rcases decay₁ f k n with ⟨C, hC⟩
   use C
   refine And.intro ?_ ?_
   . specialize hC 0  -- Use any `E`.
@@ -84,7 +83,7 @@ lemma pow_norm_iteratedFDeriv_le_pow_one_add_norm (f : 𝓢(E, F)) {p : ℝ} (hp
   -- Seems wild that we can choose arbitrary `q`?
   intro n
   generalize hr : q / p = r
-  rcases norm_iteratedFDeriv_le_pow_one_add_norm 𝕜 f r n with ⟨C, ⟨hC_nonneg, hC⟩⟩
+  rcases norm_iteratedFDeriv_le_pow_one_add_norm f r n with ⟨C, ⟨hC_nonneg, hC⟩⟩
   use C ^ p
   have hC_pow : 0 ≤ C ^ p := Real.rpow_nonneg_of_nonneg hC_nonneg _
   refine And.intro hC_pow ?_
@@ -101,7 +100,7 @@ lemma pow_norm_iteratedFDeriv_le_pow_one_add_norm (f : 𝓢(E, F)) {p : ℝ} (hp
 /- Simple version of `pow_norm_iteratedFDeriv_le_pow_one_add_norm` with `q = -1`. -/
 lemma pow_norm_iteratedFDeriv_le_inv_one_add_norm (f : 𝓢(E, F)) {p : ℝ} (hp : 0 < p) :
     ∀ (n : ℕ), ∃ C, 0 ≤ C ∧ ∀ x, ‖iteratedFDeriv ℝ n f x‖ ^ p ≤ C * (1 + ‖x‖)⁻¹ := by
-  have := pow_norm_iteratedFDeriv_le_pow_one_add_norm 𝕜 f hp 1
+  have := pow_norm_iteratedFDeriv_le_pow_one_add_norm f hp 1
   simpa [Real.rpow_neg_one]
 
 -- Rewrite for `norm` (`iteratedFDeriv` with `n = 0`).
@@ -109,25 +108,25 @@ lemma pow_norm_iteratedFDeriv_le_inv_one_add_norm (f : 𝓢(E, F)) {p : ℝ} (hp
 /- Convenient form of `pow_norm_iteratedFDeriv_le_pow_one_add_norm`. -/
 lemma pow_norm_le_pow_one_add_norm (f : 𝓢(E, F)) {p : ℝ} (hp : 0 < p) (q : ℝ) :
     ∃ C, 0 ≤ C ∧ ∀ x, ‖f x‖ ^ p ≤ C * (1 + ‖x‖) ^ (-q) := by
-  have := pow_norm_iteratedFDeriv_le_pow_one_add_norm 𝕜 f hp q 0
+  have := pow_norm_iteratedFDeriv_le_pow_one_add_norm f hp q 0
   simpa
 
 /- Schwartz map is bounded by `C_q * (1 + ‖x‖) ^ (-q)` for all `q`. -/
 lemma norm_le_pow_one_add_norm (f : 𝓢(E, F)) (q : ℝ) :
     ∃ C, 0 ≤ C ∧ ∀ x, ‖f x‖ ≤ C * (1 + ‖x‖) ^ (-q) := by
-  have := pow_norm_iteratedFDeriv_le_pow_one_add_norm 𝕜 f zero_lt_one q 0
+  have := pow_norm_iteratedFDeriv_le_pow_one_add_norm f zero_lt_one q 0
   simpa
 
 /- Convenient form of `pow_norm_iteratedFDeriv_le_pow_one_add_norm`. -/
 lemma pow_norm_le_inv_one_add_norm (f : 𝓢(E, F)) {p : ℝ} (hp : 0 < p) :
     ∃ C, 0 ≤ C ∧ ∀ x, ‖f x‖ ^ p ≤ C * (1 + ‖x‖)⁻¹ := by
-  have := pow_norm_iteratedFDeriv_le_inv_one_add_norm 𝕜 f hp 0
+  have := pow_norm_iteratedFDeriv_le_inv_one_add_norm f hp 0
   simpa
 
 /- Schwartz map is bounded by `C * (1 + ‖x‖)⁻¹`. -/
 lemma norm_le_inv_one_add_norm (f : 𝓢(E, F)) :
     ∃ C, 0 ≤ C ∧ ∀ x, ‖f x‖ ≤ C * (1 + ‖x‖)⁻¹ := by
-  have := pow_norm_iteratedFDeriv_le_inv_one_add_norm 𝕜 f zero_lt_one 0
+  have := pow_norm_iteratedFDeriv_le_inv_one_add_norm f zero_lt_one 0
   simpa
 
 
@@ -155,7 +154,7 @@ lemma mem_Lp (f : 𝓢(E, F)) (p : NNReal) [hp : Fact (0 < p)] : Memℒp f p := 
   refine ENNReal_rpow_lt_top (inv_pos_of_pos hp.out) ?_
   generalize hr : (FiniteDimensional.finrank ℝ E + 1 : ℝ) = r
   -- Need to get `C` for condition.
-  rcases pow_norm_le_pow_one_add_norm 𝕜 f hp.out r with ⟨C, ⟨hC_nonneg, hC⟩⟩
+  rcases pow_norm_le_pow_one_add_norm f hp.out r with ⟨C, ⟨hC_nonneg, hC⟩⟩
   simp at hC
   suffices : ∫⁻ (x : E), (‖f x‖₊ : ENNReal) ^ (p : ℝ) ≤ ∫⁻ (x : E), ENNReal.ofReal (C * (1 + ‖x‖) ^ (-r))
   . refine lt_of_le_of_lt this ?_
@@ -196,17 +195,20 @@ lemma coeFn_toAEEqFun (f : 𝓢(E, F)) (μ : Measure E) : f.toAEEqFun μ =ᵐ[μ
 -- Or use `SchwartzMap.toContinuousMap.toAEEqFun`?
 def toLp (p : NNReal) [Fact (0 < p)] (f : 𝓢(E, F)) :
     Lp F p (by volume_tac : Measure E) :=
-  Memℒp.toLp f.toFun (mem_Lp 𝕜 f p)
+  Memℒp.toLp f.toFun (mem_Lp f p)
 
-lemma coeFn_toLp {p : NNReal} [Fact (0 < p)] (f : 𝓢(E, F)) : f.toLp 𝕜 p =ᵐ[volume] f :=
+lemma coeFn_toLp {p : NNReal} [Fact (0 < p)] (f : 𝓢(E, F)) : f.toLp p =ᵐ[volume] f :=
   Memℒp.coeFn_toLp _
 
 -- Use `Memℒp f 1` to provide `Integrable`.
 -- Cannot use `BoundedContinuousFunction.integrable` as it requires `IsFiniteMeasure μ`.
 lemma integrable {f : 𝓢(E, F)} : Integrable f := by
   have hp : Fact ((0 : ℝ) < 1) := ⟨zero_lt_one⟩
-  refine Integrable.congr (L1.integrable_coeFn (f.toLp 𝕜 1)) ?_
-  exact coeFn_toLp 𝕜 f
+  refine Integrable.congr (L1.integrable_coeFn (f.toLp 1)) ?_
+  exact coeFn_toLp f
+
+section SMul
+variable (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
 lemma integrable_essSup_smul
     {f : E → 𝕜}
@@ -214,7 +216,9 @@ lemma integrable_essSup_smul
     (hf_ess_sup : essSup (fun x => (‖f x‖₊ : ENNReal)) (volume : Measure E) ≠ ⊤)
     (φ : 𝓢(E, F)) :
     Integrable (fun x => f x • φ x) :=
-  Integrable.essSup_smul (SchwartzMap.integrable 𝕜) hf_meas hf_ess_sup
+  Integrable.essSup_smul SchwartzMap.integrable hf_meas hf_ess_sup
+
+end SMul
 
 end Integral
 end SchwartzMap
