@@ -132,7 +132,7 @@ lemma norm_le_inv_one_add_norm (f : 𝓢(E, F)) :
 
 section Integral
 
-variable [MeasureSpace E] [OpensMeasurableSpace E] [SecondCountableTopologyEither E F]
+variable [MeasureSpace E]
 variable [FiniteDimensional ℝ E] [BorelSpace E] [(volume : Measure E).IsAddHaarMeasure]
 
 /- Schwartz maps in `𝓢(E, F)` are in `Lp` for `p ∈ (0, ∞)` and finite-dimensional `E`.
@@ -200,25 +200,136 @@ def toLp (p : NNReal) [Fact (0 < p)] (f : 𝓢(E, F)) :
 lemma coeFn_toLp {p : NNReal} [Fact (0 < p)] (f : 𝓢(E, F)) : f.toLp p =ᵐ[volume] f :=
   Memℒp.coeFn_toLp _
 
+lemma mem_L1 (f : 𝓢(E, F)) : Memℒp f 1 := by
+  have _ : Fact ((0 : ℝ) < 1) := ⟨by norm_num⟩
+  exact mem_Lp f 1
+
+def toL1 (f : 𝓢(E, F)) : Lp F 1 (by volume_tac : Measure E) :=
+  Memℒp.toLp f.toFun (mem_L1 f)
+
+lemma coeFn_toL1 (f : 𝓢(E, F)) : f.toL1 =ᵐ[volume] f :=
+  Memℒp.coeFn_toLp (mem_L1 f)
+
+-- -- Define integral using `L1.integral`.
+-- -- TODO: Defining manually eliminates `CompleteSpace`?
+-- noncomputable def integral [CompleteSpace F] (f : 𝓢(E, F)) : F := L1.integral f.toL1
+
+-- -- TODO: Generalize to `𝕜` in `integralCLM'`.
+-- def integralCLM [CompleteSpace F] : 𝓢(E, F) →L[ℝ] F where
+--   toFun := integral
+--   map_add' := sorry
+--   map_smul' := sorry
+--   cont := by
+--     simp
+--     simp [integral]
+--     sorry
+
+-- def toL1CLM : 𝓢(E, F) →L[ℝ] Lp F 1 (by volume_tac : Measure E) :=
+--   mkCLM (fun f)
+
+-- def toL1CLM' (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F] :
+--     𝓢(E, F) →L[𝕜] Lp F 1 (by volume_tac : Measure E) where
+--   toFun := toL1
+--   map_add' f g := by rfl
+--   map_smul' d f := by rfl
+--   cont := by
+--     simp [toL1]
+--     sorry
+
 -- Use `Memℒp f 1` to provide `Integrable`.
 -- Cannot use `BoundedContinuousFunction.integrable` as it requires `IsFiniteMeasure μ`.
-lemma integrable {f : 𝓢(E, F)} : Integrable f := by
-  have hp : Fact ((0 : ℝ) < 1) := ⟨zero_lt_one⟩
-  refine Integrable.congr (L1.integrable_coeFn (f.toLp 1)) ?_
-  exact coeFn_toLp f
+lemma integrable {f : 𝓢(E, F)} : Integrable f :=
+  Integrable.congr (L1.integrable_coeFn f.toL1) (coeFn_toL1 f)
 
-section SMul
-variable (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+-- Helper for `integralCLM`. Need `CompleteSpace F` to use `L1.integral`?
+lemma integralLM [CompleteSpace F] : 𝓢(E, F) →ₗ[ℝ] F where
+  -- toFun f := ∫ (x : E), f x
+  -- map_add' f g := by simp [integral_add f.integrable g.integrable]
+  -- map_smul' d f := by simp [integral_smul]
+  toFun f := L1.integral f.toL1
+  -- toFun f := L1.integralCLM f.toL1
+  map_add' f g := sorry
+  map_smul' d f := sorry
 
-lemma integrable_essSup_smul
-    {f : E → 𝕜}
-    (hf_meas : MeasureTheory.AEStronglyMeasurable f (volume : Measure E))
-    (hf_ess_sup : essSup (fun x => (‖f x‖₊ : ENNReal)) (volume : Measure E) ≠ ⊤)
-    (φ : 𝓢(E, F)) :
-    Integrable (fun x => f x • φ x) :=
-  Integrable.essSup_smul SchwartzMap.integrable hf_meas hf_ess_sup
+-- Can we prove that any linear map from `𝓢(E, F)` to `F` is continuous? Need bound...
+example : Continuous (lm : 𝓢(E, F) →ₗ[ℝ] F) := by
+  -- refine Seminorm.continuous_from_bounded
+  --   (schwartz_withSeminorms ℝ E F) (norm_withSeminorms ℝ F) _ ?_
+  -- rw [Seminorm.isBounded_const]
+  refine Seminorm.cont_withSeminorms_normedSpace F (schwartz_withSeminorms ℝ E F) _ ?_
+  sorry
 
-end SMul
+-- Look for `(C, s)` that give a bound on `integralLM` in terms of `schwartzSeminormFamily`.
+example [CompleteSpace F] (s : Finset (ℕ × ℕ)) (C : NNReal) :
+    Seminorm.comp (normSeminorm ℝ F) integralLM ≤ C • Finset.sup s (schwartzSeminormFamily ℝ E F) := by
+  intro f
+  simp
+  have : integralLM f = L1.integral f.toL1
+  . sorry  -- Could define/show?
+  rw [this]
+  refine le_trans (L1.norm_integral_le _) ?_
+  rw [toL1]
+  simp  -- `Lp.norm_toLp`
+  rw [snorm_one_eq_lintegral_nnnorm]
+  simp [schwartzSeminormFamily]
+  rw?
+  sorry
+
+-- lemma integral_isBounded : ∃ (s : Finset (ℕ × ℕ)) (C : NNReal),
+--     Seminorm.comp (normSeminorm ℝ F) integralLM ≤
+--     C • Finset.sup s (schwartzSeminormFamily ℝ E F) := by
+--   -- Use `L1.norm_Integral_le_one` for `‖L1.integralCLM‖ ≤ 1`? Wrong norm...
+--   simp [schwartzSeminormFamily]
+--   -- simp [SchwartzMap.seminormAux, Seminorm.ofSMulLE, Seminorm.of]
+--   sorry
+
+/- Integral of a Schwartz map as a `ContinuousLinearMap`.
+
+Based on `SchwartzMap.mkCLM`, which is for `𝓢(E, F) →L[𝕜] 𝓢(E, F)`.
+
+TODO: Generalize to `𝕜` in `integralCLM'`.
+-/
+lemma integralCLM [CompleteSpace F] : 𝓢(E, F) →L[ℝ] F where
+  toLinearMap := integralLM
+  cont := by
+    simp
+    -- change Continuous (integralLM : 𝓢(E, F) →ₗ[ℝ] F)
+    -- -- Use `norm_withSeminorms ℝ 𝔽` to obtain `WithSeminorm _` for `F`.
+    -- refine Seminorm.continuous_from_bounded
+    --   (schwartz_withSeminorms ℝ E F) (norm_withSeminorms ℝ F) _ ?_
+    -- rw [Seminorm.isBounded_const]
+    refine Seminorm.cont_withSeminorms_normedSpace F (schwartz_withSeminorms ℝ E F) _ ?_
+    sorry
+
+-- /- Integral of a Schwartz map as a `ContinuousLinearMap`. -/
+-- lemma integralCLM' [CompleteSpace F]
+--     (𝕜 : Type*) [NontriviallyNormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F] :
+--     𝓢(E, F) →L[𝕜] F where
+--   toFun f := L1.integralCLM' 𝕜 f.toL1
+--   map_add' f g := by
+--     simp
+--     sorry
+--   map_smul' d f := by
+--     simp
+--     sorry
+--   cont := by
+--     simp
+--     refine Continuous.comp ?_ ?_
+--     . exact ContinuousLinearMap.continuous _
+--     . sorry
+
+-- section SMul
+-- variable (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+
+-- lemma integrable_smul
+--     {f : E → 𝕜}
+--     (hf_meas : MeasureTheory.AEStronglyMeasurable f (volume : Measure E))
+--     (hf_ess_sup : essSup (fun x => (‖f x‖₊ : ENNReal)) (volume : Measure E) ≠ ⊤)
+--     (φ : 𝓢(E, F)) :
+--     Integrable (fun x => f x • φ x) :=
+--   Integrable.essSup_smul SchwartzMap.integrable hf_meas hf_ess_sup
+
+-- end SMul
 
 end Integral
 end SchwartzMap
@@ -229,28 +340,60 @@ namespace TemperedDistribution
 variable {E F : Type*}
 variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 variable [NormedAddCommGroup F] [NormedSpace ℝ F]
-variable (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
-variable [MeasureSpace E] [OpensMeasurableSpace E] [SecondCountableTopologyEither E F]
+variable [MeasureSpace E] [CompleteSpace F]
+-- variable [OpensMeasurableSpace E] [SecondCountableTopologyEither E F]
 variable [FiniteDimensional ℝ E] [BorelSpace E] [(volume : Measure E).IsAddHaarMeasure]
+-- variable (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+
+section SMul
+
+-- `integral_smul` requires `NontriviallyNormedField` rather than `NormedField`.
+variable (𝕜 : Type*) [NontriviallyNormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+
+-- TODO: Is it useful to define `const_smul` using `𝕜` and `const_mul` using `F`?
+lemma const_smul (c : 𝕜) : 𝓢(E, F) →L[𝕜] F where
+  toFun f := c • ∫ (x : E), f x
+  map_add' f g := by
+    simp [integral_add f.integrable g.integrable]
+  map_smul' d f := by
+    simp [integral_smul]
+    rw [smul_comm]
+  cont := by
+    simp
+    refine Continuous.const_smul ?_ c
+    sorry
 
 /- Define a distribution from a bounded measurable function by integration. -/
+-- TODO: Why do we need to define `cont` here?
 noncomputable def integral_essSup_smul (f : E → 𝕜)
     (hf_meas : MeasureTheory.AEStronglyMeasurable f (volume : Measure E))
     (hf_ess_sup : essSup (fun x => (‖f x‖₊ : ENNReal)) (volume : Measure E) ≠ ⊤) :
     𝓢(E, F) →L[𝕜] F where
-  toFun φ := ∫ x, f x • φ x
+  toFun φ := ∫ (x : E), f x • φ x
   map_add' φ φ' := by sorry
   map_smul' := by sorry
   cont := by sorry
 
--- Is it correct to use `c : 𝕜`?
--- TODO: Why do we need to define `cont` here?
-lemma const (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
-    (c : 𝕜) : 𝓢(E, F) →L[𝕜] F where
-  toFun f := c • ∫ x, f x
-  map_add' := sorry
-  map_smul' := sorry
+-- noncomputable def integral_bdd_smul (f : E → 𝕜)
+--     (hf_meas : MeasureTheory.AEStronglyMeasurable f (volume : Measure E))
+--     (hf_ess_sup : essSup (fun x => (‖f x‖₊ : ENNReal)) (volume : Measure E) ≠ ⊤) :
+--     𝓢(E, F) →L[𝕜] F where
+--   toFun φ := ∫ (x : E), f x • φ x
+--   map_add' φ φ' := by sorry
+--   map_smul' := by sorry
+--   cont := by sorry
+
+end SMul
+
+-- TODO: Should this whole thing be a CLM?
+-- Maybe provide `asCLM` instead for readabilty?
+def RealFourier (f : 𝓢(ℝ, ℂ) →L[ℂ] ℂ) : 𝓢(ℝ, ℂ) →L[ℂ] ℂ := sorry
+
+noncomputable def RealFourier.asCLM : (𝓢(ℝ, ℂ) →L[ℂ] ℂ) →L[ℂ] 𝓢(ℝ, ℂ) →L[ℂ] ℂ where
+  toFun := RealFourier
+  map_add' f g := sorry
+  map_smul' f g := sorry
   cont := sorry
 
-namespace TemperedDistribution
+end TemperedDistribution
