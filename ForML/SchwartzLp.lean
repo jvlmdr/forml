@@ -9,14 +9,11 @@
 -- TODO: Prove that Schwartz maps are dense in Lp.
 
 import Mathlib.Analysis.Distribution.SchwartzSpace
-import Mathlib.Analysis.Fourier.FourierTransform
 import Mathlib.Analysis.SpecialFunctions.JapaneseBracket
 import Mathlib.MeasureTheory.Function.L1Space
-import Mathlib.MeasureTheory.Integral.IntegrableOn
-import Mathlib.Tactic.LibrarySearch
-import Mathlib.Tactic.Linarith
+import Mathlib.MeasureTheory.Integral.Bochner
 
-open ENNReal MeasureTheory SchwartzSpace
+open MeasureTheory SchwartzSpace
 
 -- Eventual goal: Prove that Fourier transform of Dirac is const and vice versa.
 
@@ -28,14 +25,14 @@ open ENNReal MeasureTheory SchwartzSpace
 -- https://math.stackexchange.com/questions/1505921/schwartz-functions-have-finite-lp-norm
 
 -- Couldn't find this in mathlib.
-lemma ENNReal_rpow_ne_top {a : ℝ≥0∞} {p : ℝ} (hp : 0 < p) (h : a ≠ ⊤) : a ^ p ≠ ⊤ := by
-  rw [← ofReal_toReal_eq_iff] at h
+lemma ENNReal_rpow_ne_top {a : ENNReal} {p : ℝ} (hp : 0 < p) (h : a ≠ ⊤) : a ^ p ≠ ⊤ := by
+  rw [← ENNReal.ofReal_toReal_eq_iff] at h
   rw [← h]
   simp
   intros
   exact hp.le
 
-lemma ENNReal_rpow_lt_top {a : ℝ≥0∞} {p : ℝ} (hp : 0 < p) (h : a < ⊤) : a ^ p < ⊤ := by
+lemma ENNReal_rpow_lt_top {a : ENNReal} {p : ℝ} (hp : 0 < p) (h : a < ⊤) : a ^ p < ⊤ := by
   rw [lt_top_iff_ne_top] at h ⊢
   exact ENNReal_rpow_ne_top hp h
 
@@ -250,8 +247,9 @@ lemma norm_toL1_eq_integral (f : 𝓢(E, F)) : ‖toL1 f‖ = ∫ x, ‖f x‖ :
 --   map_add' f g := by rfl
 
 -- Use `Memℒp f 1` to provide `Integrable`.
-lemma integrable {f : 𝓢(E, F)} : Integrable f :=
-  Integrable.congr (L1.integrable_coeFn f.toL1) (coeFn_toL1 f)
+lemma integrable {f : 𝓢(E, F)} : Integrable f := by
+  rw [← memℒp_one_iff_integrable]
+  exact mem_Lp f 1
 
 
 section Continuous
@@ -319,6 +317,7 @@ noncomputable def toL1_LM : 𝓢(E, F) →ₗ[𝕜] Lp F 1 mE.volume where
   map_smul' d f := by rfl
 
 -- Prove that map from `𝓢(E, F)` to `Lp F p` is continuous.
+-- TODO: Generalize to Lp? Or is there an existing map L1 → Lp?
 -- TODO: Extract (and generalize?) the proof of continuity?
 noncomputable def toL1_CLM : 𝓢(E, F) →L[𝕜] Lp F 1 mE.volume where
   toLinearMap := toL1_LM 𝕜
@@ -343,12 +342,14 @@ noncomputable def toL1_CLM : 𝓢(E, F) →L[𝕜] Lp F 1 mE.volume where
     simp [← hk]
 
 
+/- The integral of a Schwartz map as a continuous linear map. -/
 noncomputable def integralCLM' [CompleteSpace F] : 𝓢(E, F) →L[ℝ] F :=
   ContinuousLinearMap.comp L1.integralCLM (toL1_CLM ℝ)
 
 section Nontrivial
 variable (𝕜 : Type*) [NontriviallyNormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
+/- The integral of a Schwartz map as a continuous linear map. -/
 noncomputable def integralCLM [CompleteSpace F] : 𝓢(E, F) →L[𝕜] F :=
   ContinuousLinearMap.comp (L1.integralCLM' 𝕜) (toL1_CLM 𝕜)
 
@@ -358,65 +359,43 @@ end Integrable
 end SchwartzMap
 
 
+section Def
+
+variable (𝕜 : Type*) [NontriviallyNormedField 𝕜]
+variable (E F : Type*)
+variable [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
+variable [NormedAddCommGroup F] [NormedSpace ℝ F] [CompleteSpace F]
+variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+
+-- TODO: Is this useful or will it get in the way? Should 𝕜 not be included?
+abbrev TemperedDistribution := 𝓢(E, F) →L[𝕜] F
+
+end Def
+
 namespace TemperedDistribution
 
+variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
 variable {E F : Type*}
 variable [NormedAddCommGroup E] [NormedSpace ℝ E]
-variable [NormedAddCommGroup F] [NormedSpace ℝ F]
+variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
+variable [NormedAddCommGroup F] [NormedSpace ℝ F] [CompleteSpace F]
+variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
-variable [MeasureSpace E] [CompleteSpace F]
--- variable [OpensMeasurableSpace E] [SecondCountableTopologyEither E F]
-variable [FiniteDimensional ℝ E] [BorelSpace E] [(volume : Measure E).IsAddHaarMeasure]
--- variable (𝕜 : Type*) [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+noncomputable instance instOne : One (𝓢(E, F) →L[𝕜] F) where
+  one := SchwartzMap.integralCLM 𝕜
 
-section SMul
+noncomputable def const (c : 𝕜) : 𝓢(E, F) →L[𝕜] F := c • (1 : 𝓢(E, F) →L[𝕜] F)
 
--- `integral_smul` requires `NontriviallyNormedField` rather than `NormedField`.
-variable (𝕜 : Type*) [NontriviallyNormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+lemma const_zero : const (0 : 𝕜) = (0 : 𝓢(E, F) →L[𝕜] F) := by simp [const]
+lemma const_one : const (1 : 𝕜) = (1 : 𝓢(E, F) →L[𝕜] F) := by simp [const]
+lemma const_neg_one : const (-1 : 𝕜) = (-1 : 𝓢(E, F) →L[𝕜] F) := by simp [const]
 
--- TODO: Is it useful to define `const_smul` using `𝕜` and `const_mul` using `F`?
-lemma const_smul (c : 𝕜) : 𝓢(E, F) →L[𝕜] F where
-  toFun f := c • ∫ (x : E), f x
-  map_add' f g := by
-    simp [integral_add f.integrable g.integrable]
-  map_smul' d f := by
-    simp [integral_smul]
-    rw [smul_comm]
-  cont := by
-    simp
-    refine Continuous.const_smul ?_ c
-    sorry
+-- TODO: Should we use `(n : ℝ)` with an alternative definition of `const` here?
+noncomputable instance instNatCast : NatCast (𝓢(E, F) →L[𝕜] F) where
+  natCast n := const (n : 𝕜)
 
-/- Define a distribution from a bounded measurable function by integration. -/
--- TODO: Why do we need to define `cont` here?
-noncomputable def integral_essSup_smul (f : E → 𝕜)
-    (hf_meas : MeasureTheory.AEStronglyMeasurable f (volume : Measure E))
-    (hf_ess_sup : essSup (fun x => (‖f x‖₊ : ENNReal)) (volume : Measure E) ≠ ⊤) :
-    𝓢(E, F) →L[𝕜] F where
-  toFun φ := ∫ (x : E), f x • φ x
-  map_add' φ φ' := by sorry
-  map_smul' := by sorry
-  cont := by sorry
-
--- noncomputable def integral_bdd_smul (f : E → 𝕜)
---     (hf_meas : MeasureTheory.AEStronglyMeasurable f (volume : Measure E))
---     (hf_ess_sup : essSup (fun x => (‖f x‖₊ : ENNReal)) (volume : Measure E) ≠ ⊤) :
---     𝓢(E, F) →L[𝕜] F where
---   toFun φ := ∫ (x : E), f x • φ x
---   map_add' φ φ' := by sorry
---   map_smul' := by sorry
---   cont := by sorry
-
-end SMul
-
--- TODO: Should this whole thing be a CLM?
--- Maybe provide `asCLM` instead for readabilty?
-def RealFourier (f : 𝓢(ℝ, ℂ) →L[ℂ] ℂ) : 𝓢(ℝ, ℂ) →L[ℂ] ℂ := sorry
-
-noncomputable def RealFourier.asCLM : (𝓢(ℝ, ℂ) →L[ℂ] ℂ) →L[ℂ] 𝓢(ℝ, ℂ) →L[ℂ] ℂ where
-  toFun := RealFourier
-  map_add' f g := sorry
-  map_smul' f g := sorry
-  cont := sorry
+noncomputable instance instIntCast : IntCast (𝓢(E, F) →L[𝕜] F) where
+  intCast n := const (n : 𝕜)
 
 end TemperedDistribution
