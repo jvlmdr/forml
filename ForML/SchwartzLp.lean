@@ -159,6 +159,16 @@ variable {α : Type*} [SeminormedAddGroup α]
 end OneAddNorm
 
 
+-- section Measurable
+-- variable [MeasurableSpace E] [OpensMeasurableSpace E] [SecondCountableTopologyEither E F]
+
+-- lemma aestronglyMeasurable (f : 𝓢(E, F)) (μ : Measure E := by volume_tac) :
+--     AEStronglyMeasurable f μ := by
+--   exact f.continuous.aestronglyMeasurable
+
+-- end Measurable
+
+
 section Integrable
 
 variable [mE : MeasureSpace E]
@@ -208,13 +218,7 @@ lemma snorm_nnreal_lt_top (f : 𝓢(E, F)) {p : NNReal} (hp : 0 < p) : snorm f p
   refine Real.toNNReal_le_toNNReal ?_
   exact hC x
 
-/- Schwartz maps in `𝓢(E, F)` are in `Lp` for finite-dimensional `E`.
-
-TODO: Show that Schwartz maps are dense in `Lp`?
-Might be achieved by showing that smooth, compact functions are dense in `Lp`.
--/
-lemma mem_Lp (f : 𝓢(E, F)) (p : ENNReal) : Memℒp f p := by
-  refine And.intro f.continuous.aestronglyMeasurable ?_
+lemma snorm_lt_top (f : 𝓢(E, F)) {p : ENNReal} : snorm f p volume < ⊤ := by
   cases p with
   | none => exact snorm_top_lt_top f
   | some p =>
@@ -222,6 +226,14 @@ lemma mem_Lp (f : 𝓢(E, F)) (p : ENNReal) : Memℒp f p := by
     cases eq_or_lt_of_le (zero_le p) with
     | inl hp => simp [← hp]
     | inr hp => exact snorm_nnreal_lt_top f hp
+
+/- Schwartz maps in `𝓢(E, F)` are in `Lp` for finite-dimensional `E`.
+
+TODO: Show that Schwartz maps are dense in `Lp`?
+Might be achieved by showing that smooth, compact functions are dense in `Lp`.
+-/
+lemma mem_Lp (f : 𝓢(E, F)) (p : ENNReal) : Memℒp f p :=
+  ⟨f.continuous.aestronglyMeasurable, (snorm_lt_top f)⟩
 
 def toLp (p : ENNReal) (f : 𝓢(E, F)) : Lp F p mE.volume :=
   Memℒp.toLp f (mem_Lp f p)
