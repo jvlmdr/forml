@@ -19,7 +19,7 @@ variable {α : Type*}
 variable {E : Type*} [NormedAddCommGroup E]
 variable {𝕜 : Type*} [NormedField 𝕜] [NormedSpace 𝕜 E]
 
-lemma memL1_integralAgainstMemℒp_top [MeasurableSpace α] {g : α → 𝕜} {μ : Measure α}
+lemma memL1_memℒp_top_smul [MeasurableSpace α] {g : α → 𝕜} {μ : Measure α}
     (hg : Memℒp g ⊤ μ) (f : Lp E 1 μ) :
     Memℒp (g • (f : α → E)) 1 μ := by
   refine And.intro ?_ ?_
@@ -33,23 +33,23 @@ lemma memL1_integralAgainstMemℒp_top [MeasurableSpace α] {g : α → 𝕜} {�
     . exact Memℒp.snorm_ne_top hg
     . exact Lp.snorm_ne_top f
 
-lemma memL1_integralAgainstAEStronglyMeasurable {g : α → 𝕜} [MeasurableSpace α]
+lemma memL1_aestronglyMeasurable_smul_of_ae_bound {g : α → 𝕜} [MeasurableSpace α]
     {μ : Measure α}
     (hg_meas : AEStronglyMeasurable g μ)
     {C : ℝ} (hg_bound : ∀ᵐ x ∂μ, ‖g x‖ ≤ C)
     (f : Lp E 1 μ) :
     Memℒp (g • (f : α → E)) 1 μ := by
-  refine memL1_integralAgainstMemℒp_top ?_ f
+  refine memL1_memℒp_top_smul ?_ f
   exact memℒp_top_of_bound hg_meas C hg_bound
 
-lemma memL1_integralAgainstContinuous {g : α → 𝕜} [MeasurableSpace α]
+lemma memL1_continuous_smul_of_bound {g : α → 𝕜} [MeasurableSpace α]
     [TopologicalSpace α] [OpensMeasurableSpace α] [SecondCountableTopologyEither α 𝕜]
     (hg_cont : Continuous g)
     {C : ℝ} (hg_bound : ∀ x, ‖g x‖ ≤ C)
     {μ : Measure α}
     (f : Lp E 1 μ) :
     Memℒp (g • (f : α → E)) 1 μ :=
-  memL1_integralAgainstAEStronglyMeasurable
+  memL1_aestronglyMeasurable_smul_of_ae_bound
     hg_cont.aestronglyMeasurable (ae_of_all μ hg_bound) f
 
 -- Can show that function is ae `< ∞`, but not `≤ C`.
@@ -116,7 +116,7 @@ variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
 -- Define specifically for `𝓢(E, F)` since Schwartz maps are in `Lp` for any `p`.
 -- TODO: Possible to generalize to `L1` using equivalence to functions on `[0, 1]`?
-lemma memL1_integralAgainstLp {p : ENNReal} (hp : 1 ≤ p)
+lemma memL1_memℒp_smul {p : ENNReal} (hp : 1 ≤ p)
     {g : E → 𝕜} (hg : Memℒp g p) (f : 𝓢(E, F)) :
     Memℒp (g • (f : E → F)) 1 := by
   refine And.intro ?_ ?_
@@ -138,8 +138,30 @@ lemma memL1_integralAgainstLp {p : ENNReal} (hp : 1 ≤ p)
       exact snorm_lt_top f
 
 
+noncomputable def integralAgainstMemℒpLM
+    {p : ENNReal} (hp : 1 ≤ p) {g : E → 𝕜} (hg : Memℒp g p) :
+    𝓢(E, F) →ₗ[𝕜] F where
+  -- toFun φ := L1.integralCLM (Memℒp.toLp _ (memL1_memℒp_smul hp hg φ))
+  toFun φ := L1.integral (Memℒp.toLp _ (memL1_memℒp_smul hp hg φ))
+  map_add' φ φ' := by
+    simp
+    sorry
+  map_smul' d φ := by
+    simp
+    sorry
+
+lemma integralAgainstMemℒpLM_apply {p : ENNReal} (hp : 1 ≤ p)
+    {g : E → 𝕜} (hg : Memℒp g p) (φ : 𝓢(E, F)) :
+    integralAgainstMemℒpLM hp hg φ = ∫ (x : E), g x • φ x := by
+  simp [integralAgainstMemℒpLM]
+  -- rw [← integral_eq]
+  -- simp [L1.integral_eq_integral]
+  -- simp [Memℒp.coeFn_toLp]
+  sorry
+
+
 /- Helper for `integralAgainstContinuousCLM`. -/
-noncomputable def integralAgainstContinuousLM [CompleteSpace F] (g : E → 𝕜)
+noncomputable def integralAgainstContinuousLM [CompleteSpace F] {g : E → 𝕜}
     (hg_meas : MeasureTheory.AEStronglyMeasurable g volume)
     (hg_bdd : essSup (fun x => (‖g x‖₊ : ENNReal)) volume ≠ ⊤) :
     𝓢(E, F) →ₗ[𝕜] F where
