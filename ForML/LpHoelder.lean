@@ -121,17 +121,18 @@ end ENNReal
 
 variable {E : Type*} [MeasurableSpace E]
 variable {μ : Measure E}
-variable {p q : ℝ≥0∞} (hpq : p⁻¹ + q⁻¹ = 1)
+variable {p q : ℝ≥0∞} {hpq : p⁻¹ + q⁻¹ = 1}
 
 section Mul
 
-variable {F : Type*} [NormedRing F]
+variable {𝕜 : Type*} [NormedRing 𝕜]
 -- Use `NormedRing` because we need `NormedAddCommGroup` for `Memℒp` and
 -- `NonUnitalSeminormedRing` for `norm_mul_le`.
 
 section Measurable
-variable {f : E → F} (hf : AEStronglyMeasurable f μ)
-variable {g : E → F} (hg : AEStronglyMeasurable g μ)
+variable {f : E → 𝕜} (hf : AEStronglyMeasurable f μ)
+variable {g : E → 𝕜} (hg : AEStronglyMeasurable g μ)
+variable (hpq)
 
 /- Hölder's inequality for functions.
 Generalization of `integral_mul_le_Lp_mul_Lq` to include 1 and ∞
@@ -188,14 +189,15 @@ end Mul
 
 section SMul
 
+variable {𝕜 : Type*} [NormedAddCommGroup 𝕜]
 variable {F : Type*} [NormedAddCommGroup F]
-variable {G : Type*} [NormedAddCommGroup G]
 -- TODO: Replace these with something more general that includes above?
-variable [SMulZeroClass F G] [BoundedSMul F G]
+variable [SMulZeroClass 𝕜 F] [BoundedSMul 𝕜 F]
 
 section Measurable
-variable {f : E → F} (hf : AEStronglyMeasurable f μ)
-variable {g : E → G} (hg : AEStronglyMeasurable g μ)
+variable {f : E → 𝕜} (hf : AEStronglyMeasurable f μ)
+variable {g : E → F} (hg : AEStronglyMeasurable g μ)
+variable (hpq)
 
 /- Hölder's inequality for functions.
 Generalization of `integral_mul_le_Lp_mul_Lq` to include 1 and ∞.
@@ -217,11 +219,12 @@ lemma snorm_smul_one_le_snorm_Lp_smul_snorm_Lq :
 end Measurable
 
 section Memℒp
-variable {f : E → F} (hf : Memℒp f p μ)
-variable {g : E → G} (hg : Memℒp g q μ)
+variable {f : E → 𝕜} (hf : Memℒp f p μ)
+variable {g : E → F} (hg : Memℒp g q μ)
+variable (hpq)
 
 /- Use Hölder's inequality for functions to show that `f • g` is in `L1`. -/
-lemma memL1_Lp_smul_Lq : Memℒp (f • g) 1 μ := by
+lemma memL1_Lp_smul_Lq  : Memℒp (f • g) 1 μ := by
   refine And.intro ?_ ?_
   . exact AEStronglyMeasurable.smul hf.aestronglyMeasurable hg.aestronglyMeasurable
   . refine lt_of_le_of_lt (snorm_smul_one_le_snorm_Lp_smul_snorm_Lq hpq ?_ ?_) ?_
@@ -232,15 +235,24 @@ lemma memL1_Lp_smul_Lq : Memℒp (f • g) 1 μ := by
 end Memℒp
 
 section Lp
-variable (f : Lp (α := E) F p μ)
-variable (g : Lp (α := E) G q μ)
+variable {f : Lp (α := E) 𝕜 p μ}
+variable {g : Lp (α := E) F q μ}
+
+section Def
+variable (hpq f g)
 
 /- Constructs an element of `L1` from `f • g` using Hölder's inequality for functions.
 
 TODO: Same for `mul` instead of `smul`?
 -/
-noncomputable def L1_of_Lp_smul_Lq : Lp (α := E) G 1 μ :=
+noncomputable def L1_of_Lp_smul_Lq : Lp (α := E) F 1 μ :=
   Memℒp.toLp _ (memL1_Lp_smul_Lq hpq (Lp.memℒp f) (Lp.memℒp g))
+
+end Def
+
+lemma coeFn_L1_of_Lp_smul_Lq :
+    (L1_of_Lp_smul_Lq hpq f g : E → F) =ᵐ[μ] (f : E → 𝕜) • (g : E → F) := by
+  simp [L1_of_Lp_smul_Lq, Memℒp.coeFn_toLp]
 
 /- Hölder's inequality for `f • g` expressed using `Lp` norms. -/
 lemma norm_L1_le_norm_Lp_mul_norm_Lq :
@@ -255,8 +267,7 @@ lemma norm_L1_le_norm_Lp_mul_norm_Lq :
   . exact ENNReal.mul_ne_top (Lp.snorm_ne_top _) (Lp.snorm_ne_top _)
   -- Need to propagate through the `AEEqFun` of `Memℒp.toLp`; use `snorm_congr_ae`.
   rw [← hξ]
-  rw [L1_of_Lp_smul_Lq]
-  rw [snorm_congr_ae (Memℒp.coeFn_toLp _ )]
+  rw [snorm_congr_ae coeFn_L1_of_Lp_smul_Lq]
   refine snorm_smul_one_le_snorm_Lp_smul_snorm_Lq hpq ?_ ?_
   . exact (Lp.memℒp f).aestronglyMeasurable
   . exact (Lp.memℒp g).aestronglyMeasurable
