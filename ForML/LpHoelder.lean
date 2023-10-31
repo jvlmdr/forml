@@ -19,6 +19,30 @@ variable {p q : ℝ≥0∞}
 lemma one_le_conjugateExponent : 1 ≤ conjugateExponent p := by
   simp [conjugateExponent]
 
+instance one_le_conjugateExponent' : Fact (1 ≤ conjugateExponent p) :=
+  ⟨one_le_conjugateExponent⟩
+
+@[simp]
+lemma sub_right_eq_self {a b : ℝ≥0∞} (ha : a ≠ 0) (ha' : a ≠ ⊤) : a - b = a ↔ b = 0 := by
+  refine Iff.intro ?_ ?_
+  . intro h
+    suffices hba : b ≤ a
+    . simpa [← ENNReal.sub_right_inj ha' hba]
+    have hba : 0 < a - b
+    . simpa [h, zero_lt_iff]
+    simp at hba
+    exact hba.le
+  . intro h
+    simp [h]
+
+-- Uses `sub_right_eq_self` with `a = 1`.
+lemma conjugateExponent_eq_one : conjugateExponent p = 1 ↔ p = ⊤ := by
+  simp [conjugateExponent, inv_eq_iff_eq_inv]
+
+lemma conjugateExponent_eq_top (hp : 1 ≤ p) : conjugateExponent p = ⊤ ↔ p = 1 := by
+  simp [conjugateExponent]
+  exact LE.le.le_iff_eq hp
+
 lemma one_le_of_conjugate (hpq : p⁻¹ + q⁻¹ = 1) : 1 ≤ p := by
   rw [← ENNReal.inv_le_inv, inv_one]
   simp [← hpq]
@@ -249,14 +273,14 @@ lemma integrable_Lp_smul_Lq  : Integrable (f • g) μ := by
 end Memℒp
 
 section Lp
-variable {f : Lp (α := E) 𝕜 p μ}
-variable {g : Lp (α := E) F q μ}
+variable {f : Lp 𝕜 p μ}
+variable {g : Lp F q μ}
 
 section Def
 variable (f g)
 
 /-- Constructs an element of `L1` from `f • g` using Hölder's inequality for functions. -/
-noncomputable def L1_of_Lp_smul_Lq : Lp (α := E) F 1 μ :=
+noncomputable def L1_of_Lp_smul_Lq : Lp F 1 μ :=
   Memℒp.toLp ((f : E → 𝕜) • (g : E → F)) (memL1_Lp_smul_Lq hpq (Lp.memℒp f) (Lp.memℒp g))
 
 end Def
@@ -314,14 +338,14 @@ lemma integrable_Lp_mul_Lq  : Integrable (f * g) μ := by
 end Memℒp
 
 section Lp
-variable {f : Lp (α := E) 𝕜 p μ}
-variable {g : Lp (α := E) 𝕜 q μ}
+variable {f : Lp 𝕜 p μ}
+variable {g : Lp 𝕜 q μ}
 
 section Def
 variable (f g)
 
 /-- Constructs an element of `L1` from `f * g` using Hölder's inequality for functions. -/
-noncomputable def L1_of_mul : Lp (α := E) 𝕜 1 μ :=
+noncomputable def L1_of_mul : Lp 𝕜 1 μ :=
   Memℒp.toLp (f * g) (memL1_Lp_mul_Lq hpq (Lp.memℒp f) (Lp.memℒp g))
 
 end Def
