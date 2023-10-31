@@ -232,11 +232,11 @@ lemma snorm_lt_top (f : 𝓢(E, F)) {p : ENNReal} : snorm f p volume < ⊤ := by
 TODO: Show that Schwartz maps are dense in `Lp`?
 Might be achieved by showing that smooth, compact functions are dense in `Lp`.
 -/
-lemma mem_Lp (f : 𝓢(E, F)) (p : ENNReal) : Memℒp f p :=
+lemma memℒp (f : 𝓢(E, F)) (p : ENNReal) : Memℒp f p :=
   ⟨f.continuous.aestronglyMeasurable, (snorm_lt_top f)⟩
 
 def toLp (p : ENNReal) (f : 𝓢(E, F)) : Lp (α := E) F p :=
-  Memℒp.toLp f (mem_Lp f p)
+  Memℒp.toLp f (memℒp f p)
 
 lemma coeFn_toLp {p : ENNReal} (f : 𝓢(E, F)) : f.toLp p =ᵐ[volume] f :=
   Memℒp.coeFn_toLp _
@@ -261,7 +261,7 @@ lemma norm_toL1_eq_integral (f : 𝓢(E, F)) : ‖toL1 f‖ = ∫ x, ‖f x‖ :
 -- Use `Memℒp f 1` to provide `Integrable`.
 lemma integrable {f : 𝓢(E, F)} : Integrable f := by
   rw [← memℒp_one_iff_integrable]
-  exact mem_Lp f 1
+  exact memℒp f 1
 
 
 section Continuous
