@@ -235,7 +235,7 @@ Might be achieved by showing that smooth, compact functions are dense in `Lp`.
 lemma mem_Lp (f : 𝓢(E, F)) (p : ENNReal) : Memℒp f p :=
   ⟨f.continuous.aestronglyMeasurable, (snorm_lt_top f)⟩
 
-def toLp (p : ENNReal) (f : 𝓢(E, F)) : Lp F p mE.volume :=
+def toLp (p : ENNReal) (f : 𝓢(E, F)) : Lp (α := E) F p :=
   Memℒp.toLp f (mem_Lp f p)
 
 lemma coeFn_toLp {p : ENNReal} (f : 𝓢(E, F)) : f.toLp p =ᵐ[volume] f :=
@@ -243,7 +243,7 @@ lemma coeFn_toLp {p : ENNReal} (f : 𝓢(E, F)) : f.toLp p =ᵐ[volume] f :=
 
 -- `L1` is useful for `L1.integralCLM`.
 -- Also, any function in `L1` is also in `Lp` with `1 < p`.
-noncomputable def toL1 : 𝓢(E, F) → Lp F 1 mE.volume := toLp 1
+noncomputable def toL1 : 𝓢(E, F) → Lp (α := E) F 1 := toLp 1
 
 lemma coeFn_toL1 (f : 𝓢(E, F)) : f.toL1 =ᵐ[volume] f := by simp [toL1, coeFn_toLp]
 
@@ -266,14 +266,17 @@ lemma integrable {f : 𝓢(E, F)} : Integrable f := by
 
 section Continuous
 
-variable (𝕜 : Type*) [NormedField 𝕜] -- [NontriviallyNormedField 𝕜]
+variable {𝕜 : Type*} [NormedField 𝕜] -- [NontriviallyNormedField 𝕜]
 variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
 -- Write a short version of the supremem of the seminorm over `Finset.Iic (k, n)`.
 -- `k` is the power, `n` is the derivative number.
 -- TODO: Avoid notation of `𝕜 k`?
+section Def
+variable (𝕜)
 noncomputable def sup_Iic_seminorm (k n : ℕ) : 𝓢(E, F) → ℝ :=
   fun f => (Finset.Iic (k, n)).sup (schwartzSeminormFamily 𝕜 E F) f
+end Def
 
 -- Now we need to obtain an upper bound of the form:
 -- `∃ C, ∫ x, ‖f x‖ ≤ C * sup_Iic_seminorm 𝕜 k n f`
@@ -285,8 +288,7 @@ lemma pow_one_add_norm_mul_norm_le_two_pow_sup_Iic_seminorm (k : ℕ) (f : 𝓢(
   have := @one_add_le_sup_seminorm_apply 𝕜 E F _ _ _ _ _ _ _ (k, 0) k 0
   simp at this
   specialize this f x
-  simp [Real.rpow_nat_cast]
-  exact this
+  simpa [Real.rpow_nat_cast]
 
 -- Re-arrange as upper bound of a function by a function.
 -- TODO: Eliminate this lemma? It's trivial and not that useful.
@@ -298,9 +300,9 @@ lemma norm_le_sup_Iic_seminorm_mul_one_add_norm_pow_neg (k : ℕ) (f : 𝓢(E, F
   simp [le_div_iff']
   -- Introduce and `simp` to get `HPow`s to match.
   -- Alternatively, could use `HPow.hPow` in all definitions.
-  have := pow_one_add_norm_mul_norm_le_two_pow_sup_Iic_seminorm 𝕜 k f
-  simp at this
-  exact this x
+  have : (1 + ‖x‖) ^ k * ‖f x‖ ≤ 2 ^ k * sup_Iic_seminorm 𝕜 k 0 f
+  . refine pow_one_add_norm_mul_norm_le_two_pow_sup_Iic_seminorm k f x
+  simpa
 
 -- Prove that bound exists for any finite-dimensional `E`.
 -- TODO: Remove dependence on `SchwartzMap.integrable`?
@@ -318,24 +320,23 @@ lemma integral_norm_le_const_mul_sup_Iic_seminorm
   intro x
   simp
   rw [← Real.rpow_nat_cast]
-  exact norm_le_sup_Iic_seminorm_mul_one_add_norm_pow_neg _ r f x
+  exact norm_le_sup_Iic_seminorm_mul_one_add_norm_pow_neg r f x
 
-
--- Need a (semi)linear map for `Seminorm.cont_withSeminorms_normedSpace`.
--- TODO: Refactor to avoid exposing this?
-noncomputable def toL1_LM : 𝓢(E, F) →ₗ[𝕜] Lp F 1 mE.volume where
-  toFun := toL1
-  map_add' f g := by rfl
-  map_smul' d f := by rfl
+lemma toL1_add (φ θ : 𝓢(E, F)) : (φ + θ).toL1 = φ.toL1 + θ.toL1 := by rfl
+lemma toL1_smul (c : 𝕜) (φ : 𝓢(E, F)) : (c • φ).toL1 = c • φ.toL1 := by rfl
 
 -- Prove that map from `𝓢(E, F)` to `Lp F p` is continuous.
--- TODO: Generalize to Lp? Or is there an existing map L1 → Lp?
+-- TODO: Generalize to Lp?
 -- TODO: Extract (and generalize?) the proof of continuity?
-noncomputable def toL1_CLM : 𝓢(E, F) →L[𝕜] Lp F 1 mE.volume where
-  toLinearMap := toL1_LM 𝕜
+section Def
+variable (𝕜)
+noncomputable def toL1_CLM' : 𝓢(E, F) →L[𝕜] Lp (α := E) F 1 where
+  toLinearMap := ⟨⟨toL1, toL1_add⟩, toL1_smul⟩
   cont := by
-    simp
     refine Seminorm.cont_withSeminorms_normedSpace _ (schwartz_withSeminorms 𝕜 E F) _ ?_
+    simp [Seminorm.le_def]
+    conv => arg 1; intro s; arg 1; intro C; intro φ  -- rename
+    simp [NNReal.smul_def]
     generalize hk : FiniteDimensional.finrank ℝ E + 1 = k
     use Finset.Iic ⟨k, 0⟩
     have hC : 0 ≤ 2 ^ k * ∫ (x : E), (1 + ‖x‖) ^ (-k)
@@ -346,44 +347,31 @@ noncomputable def toL1_CLM : 𝓢(E, F) →L[𝕜] Lp F 1 mE.volume where
     use ⟨_, hC⟩
     simp
     intro f
-    simp [toL1_LM, NNReal.smul_def]
     rw [norm_toL1_eq_integral]
     rw [← sup_Iic_seminorm]
     rw [← Real.rpow_nat_cast]
-    refine integral_norm_le_const_mul_sup_Iic_seminorm _ ?_ _
+    refine integral_norm_le_const_mul_sup_Iic_seminorm ?_ _
     simp [← hk]
+end Def
 
+noncomputable def toL1_CLM : 𝓢(E, F) →L[ℝ] Lp (α := E) F 1 := toL1_CLM' ℝ
 
 /- The integral of a Schwartz map as a continuous linear map. -/
 noncomputable def integralCLM' [CompleteSpace F] : 𝓢(E, F) →L[ℝ] F :=
-  ContinuousLinearMap.comp L1.integralCLM (toL1_CLM ℝ)
+  ContinuousLinearMap.comp L1.integralCLM toL1_CLM
 
 section Nontrivial
 variable (𝕜 : Type*) [NontriviallyNormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
 /- The integral of a Schwartz map as a continuous linear map. -/
 noncomputable def integralCLM [CompleteSpace F] : 𝓢(E, F) →L[𝕜] F :=
-  ContinuousLinearMap.comp (L1.integralCLM' 𝕜) (toL1_CLM 𝕜)
+  ContinuousLinearMap.comp (L1.integralCLM' 𝕜) (toL1_CLM' 𝕜)
 
 end Nontrivial
 end Continuous
 end Integrable
 end SchwartzMap
 
-
-section Def
-
-variable (𝕜 : Type*) [NontriviallyNormedField 𝕜]
-variable (E F : Type*)
-variable [NormedAddCommGroup E] [NormedSpace ℝ E]
-variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
-variable [NormedAddCommGroup F] [NormedSpace ℝ F] [CompleteSpace F]
-variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
-
--- TODO: Is this useful or will it get in the way? Should 𝕜 not be included?
-abbrev TemperedDistribution := 𝓢(E, F) →L[𝕜] F
-
-end Def
 
 namespace TemperedDistribution
 
@@ -393,6 +381,12 @@ variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
 variable [NormedAddCommGroup F] [NormedSpace ℝ F] [CompleteSpace F]
 variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+
+section Def
+variable (𝕜)
+-- TODO: Is this useful or will it get in the way? Should 𝕜 not be included?
+abbrev _root_.TemperedDistribution := 𝓢(E, F) →L[𝕜] F
+end Def
 
 noncomputable instance instOne : One (𝓢(E, F) →L[𝕜] F) where
   one := SchwartzMap.integralCLM 𝕜
