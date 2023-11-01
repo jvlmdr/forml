@@ -8,7 +8,7 @@ import ForML.LpHoelder
 import ForML.SchwartzLp
 
 open MeasureTheory SchwartzSpace
-open scoped Real NNReal ENNReal
+open scoped BigOperators Real NNReal ENNReal
 
 -- Plan is to define mapping from `L1` to `L1`,
 -- then show continuous,
@@ -71,11 +71,19 @@ lemma L1_integral_Lp_smul_Lq_eq_integral {p q : ENNReal} (hpq : p⁻¹ + q⁻¹ 
 --
 -- 2. Define `φ ↦ f ∘ φ` as a CLM `SchwartzMap.Lp_smul_CLM g : 𝓢(E, F) →L[𝕜] 𝓢(E, F)`,
 -- then use `integralCLM ∘ SchwartzMap.toL1_CLM ∘ SchwartzMap.Lp_smul_CLM g`.
+-- This requires that `g • φ` is a Schwartz map...
+-- Which kind of functions
 --
 -- Option 1 is more broadly useful (for `Lp` rather than just `SchwartzMap`).
 -- Option 2 is specific to `SchwartzMap`, but this may be advantageous.
 -- For example, we can easily go from `SchwartzMap` to `Lp` but not vice versa.
 -- Perhaps this could be remedied showing that `SchwartzMap` is dense in `Lp`?
+
+-- Actually, multiplication by Lp is not general enough!
+-- For example, polynomials are tempered distributions, but they are not in Lp for any p.
+-- Instead consider multiplication by a function that `HasTemperateGrowth`.
+-- Note that this is not general enough to capture all tempered distributions.
+-- For example, `x ↦ sign x` or `x ↦ max 0 x`.
 
 -- TODO: Eventually define as bilinear CLM `Lp 𝕜 p →L[𝕜] 𝓢(E, F) →L[𝕜] F`?
 -- Check type classes.
@@ -86,10 +94,121 @@ lemma L1_integral_Lp_smul_Lq_eq_integral {p q : ENNReal} (hpq : p⁻¹ + q⁻¹ 
 -- We have a function `smul g φ x : F`. Rewrite as `smul x g φ`?
 -- This might have type... `SchwartzMap E (Lp {E} 𝕜 p →L[𝕜] F)`?
 -- Check type classes.
-#check fun (p : ℝ≥0∞) [Fact (1 ≤ p)] => SchwartzMap E (Lp (α := E) 𝕜 p →L[𝕜] F)
+-- #check fun (p : ℝ≥0∞) [Fact (1 ≤ p)] => SchwartzMap E (Lp (α := E) 𝕜 p →L[𝕜] F)
 -- This would require `NormedSpace ℝ (Lp {E} 𝕜 p →L[𝕜] F)`.
 -- That is, linear functionals on `Lp` as a `NormedSpace`? What's missing? `SMul ℝ` etc.
 -- Although, if we *can* this, can we still obtain the *integral* of `f • φ` as a CLM?
+
+lemma coeFn_apply {f : 𝓢(E, F)} {x : E} : f x = f.toFun x := rfl
+
+lemma coeFn {f : 𝓢(E, F)} : f = f.toFun := rfl
+
+-- Need to have `g : E → ℝ` because `SchwartzMap` uses `ContDiff ℝ`.
+-- Lemma described here:
+-- https://math.stackexchange.com/questions/4303036/product-of-a-schwartz-function-and-a-function-with-polynomial-bonuded-derivative
+def hasTemperateGrowth_smul [NormedSpace ℝ 𝕜]
+    {g : E → ℝ} (hg : Function.HasTemperateGrowth g) (f : 𝓢(E, F)) : 𝓢(E, F) where
+  toFun := g • (f : E → F)
+  smooth' := ContDiff.smul hg.1 (f.smooth ⊤)
+  decay' := by
+    intro k n
+    -- TODO: More succinct way to write this.
+    have h_deriv (x : E) (n : ℕ) := norm_iteratedFDeriv_smul_le hg.1 (f.smooth ⊤) x (le_top : (n : ENat) ≤ ⊤)
+    -- refine Exists.imp (fun C h x => le_trans (mul_le_mul_of_nonneg_left (h_deriv x n) (by simp)) (h x)) ?_; clear this
+    have (C) :
+        (∀ (x : E), HPow.hPow ‖x‖ k * (∑ i in Finset.range (n + 1),
+          (n.choose i : ℝ) * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖) ≤ C) →
+        (∀ (x : E), HPow.hPow ‖x‖ k * ‖iteratedFDeriv ℝ n (g • (f : E → F)) x‖ ≤ C)
+    . intro h x
+      refine le_trans ?_ (h x)
+      exact mul_le_mul_of_nonneg_left (h_deriv x n) (by simp)
+    refine Exists.imp this ?_; clear this h_deriv
+    have hg_temp := hg.2
+    have hf_decay := f.decay
+    have h_decay' (i) : ∃ C, ∀ (x : E), HPow.hPow ‖x‖ k *
+        ((n.choose i : ℝ) * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖) ≤ C
+    . rcases hg_temp i with ⟨k_g, ⟨C_g, hC_g⟩⟩
+      -- Want to choose `k_f` such that we can use
+      -- `‖x‖ ^ k_f * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_f`
+      -- with the existing condition
+      -- `‖iteratedFDeriv ℝ i g x‖ ≤ C_g * (1 + ‖x‖) ^ k_g`
+      -- to obtain
+      -- `‖x‖ ^ k * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f`.
+      -- The two conditions together give us
+      -- `‖x‖ ^ k_f * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f * (1 + ‖x‖) ^ k_g`
+      -- `‖x‖ ^ k_f * (1 + ‖x‖)⁻¹ ^ k_g * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f`
+      -- Therefore, it would suffice to show that
+      -- `‖x‖ ^ k ≤ ‖x‖ ^ k_f * (1 + ‖x‖)⁻¹ ^ k_g`
+      -- Unfortunately, it would be easier to show the reverse.
+      -- That is, choosing `k_f = k + k_g` makes the *rhs* `‖x‖ ^ k * (‖x‖ / (1 + ‖x‖)) ^ k_g ≤ ‖x‖ ^ k`.
+
+      -- We can instead try to use `BigO`?
+      -- Let us rewrite the desired condition as
+      -- `(1 + ‖x‖) ^ k_g * ‖x‖ ^ k * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f * (1 + ‖x‖) ^ k_g`.
+      -- Comparing this to the condition we have
+      -- `‖x‖ ^ k_f * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f * (1 + ‖x‖) ^ k_g`
+      -- it would suffice to show that
+      -- `(1 + ‖x‖) ^ k_g * ‖x‖ ^ k ≤ ‖x‖ ^ k_f`.
+      -- We can ignore the case where `‖x‖ = 0`.
+      -- Using int rather than nat, we can write
+      -- `(1 + ε + ‖x‖) ^ k_g ≤ (ε + ‖x‖) ^ (k_f - k)`
+      -- If we choose `k_f = k_g + k + d`, then this might be achieved with an additional constant
+      -- `(1 + ε + ‖x‖) ^ k_g ≤ c * (ε + ‖x‖) ^ (k_g + d)`
+      -- Perhaps we can choose `d = 0`?
+
+      -- Alternatively, it might be easier to use `decay₁`?
+      -- This itself might need to be proved using `BigO`?
+
+      generalize hk_f : k + k_g = k_f
+      rcases hf_decay k_f (n - i) with ⟨C_f, ⟨hC_f_pos, hC_f⟩⟩
+      use (n.choose i) * C_g * C_f
+      intro x
+      -- Eliminate the `choose`.
+      simp [← mul_assoc]
+      rw [mul_comm _ (n.choose i : ℝ)]
+      simp [mul_assoc]
+      refine mul_le_mul_of_nonneg_left ?_ (Nat.cast_nonneg _)
+      -- Introduce `(1 + ‖x‖) ^ _` on both sides.
+      rw [← mul_le_mul_left (pow_pos (one_add_norm_pos x) k_g)]
+      simp only [← mul_assoc]
+      have : HPow.hPow ‖x‖ k_f * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ HPow.hPow (1 + ‖x‖) k_g * C_g * C_f
+      . -- calc, mul_le_mul
+        sorry
+      refine le_trans ?_ this; clear this
+      simp [mul_assoc]
+      rw [← mul_assoc]
+      refine mul_le_mul_of_nonneg_right ?_ (by simp [mul_nonneg])
+      -- Prove with `BigO`?
+      sorry
+
+    -- -- Convert bound on each `iteratedFDeriv` to a bound on the sum (using countable).
+    -- have hC : ∃ C, ∀ x, ∑ i in Finset.range (n + 1), HPow.hPow ‖x‖ k * ‖iteratedFDeriv ℝ i f x‖ ≤ C
+    -- . induction n with
+    --   | zero => simpa using hf_decay 0
+    --   | succ n hi =>
+    --     simp [Finset.sum_range_succ _ (n + 1)]
+    --     rcases hi with ⟨Ci, hCi⟩
+    --     rcases hf_decay (n + 1) with ⟨Cn, hCn⟩
+    --     use Ci + Cn
+    --     intro x
+    --     exact add_le_add (hCi x) (hCn x)
+    sorry
+
+
+-- TODO: Define CLMs for `Lp_smul` and `HasTemperateGrowth_smul`?
+
+-- def smul_CLM {p : ENNReal} (hp : 1 ≤ p) {g : E → 𝕜} :
+--     𝓢(E, F) →L[𝕜] 𝓢(E, F) where
+--   toFun φ := fun x => g x • φ x
+--   map_add' := integral_Lp_smul_add hp g
+--   map_smul' := integral_Lp_smul_smul g
+--   cont := by
+--     refine Seminorm.cont_withSeminorms_normedSpace _ (schwartz_withSeminorms 𝕜 E F) _ ?_
+--     simp [Seminorm.le_def]
+--     conv => arg 1; intro s; arg 1; intro C; intro φ  -- Rename.
+--     simp [NNReal.smul_def]
+--     sorry
+
 
 end SchwartzMap
 

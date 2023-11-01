@@ -335,7 +335,7 @@ noncomputable def toL1_CLM' : 𝓢(E, F) →L[𝕜] Lp (α := E) F 1 where
   cont := by
     refine Seminorm.cont_withSeminorms_normedSpace _ (schwartz_withSeminorms 𝕜 E F) _ ?_
     simp [Seminorm.le_def]
-    conv => arg 1; intro s; arg 1; intro C; intro φ  -- rename
+    conv => arg 1; intro s; arg 1; intro C; intro φ  -- Rename.
     simp [NNReal.smul_def]
     generalize hk : FiniteDimensional.finrank ℝ E + 1 = k
     use Finset.Iic ⟨k, 0⟩
