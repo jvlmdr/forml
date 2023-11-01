@@ -51,16 +51,77 @@ lemma integral_Lp_smul_smul {p : ENNReal}
   simp_rw [smul_comm _ c]
   rw [integral_smul]
 
-lemma L1_integral_Lp_smul {p q : ENNReal} (hpq : p⁻¹ + q⁻¹ = 1) {g : Lp (α := E) 𝕜 p} {φ : 𝓢(E, F)} :
-    L1.integral (L1_of_Lp_smul_Lq hpq g (φ.toLp q)) = integral_Lp_smul g φ := by
-  rw [L1.integral_eq_integral, integral_Lp_smul]
+/-- `L1.integral` of `L1_of_Lp_smul_Lq _ _ (SchwartzMap.toLp φ _)` as an integral. -/
+lemma L1_integral_Lp_smul_Lq_eq_integral {p q : ENNReal} (hpq : p⁻¹ + q⁻¹ = 1) {g : Lp (α := E) 𝕜 p} {φ : 𝓢(E, F)} :
+    L1.integral (L1_of_Lp_smul_Lq hpq g (φ.toLp q)) = ∫ (x : E), g x • φ x := by
+  rw [L1.integral_eq_integral]
   rw [integral_congr_ae (coeFn_L1_of_Lp_smul_Lq hpq)]
   refine integral_congr_ae ?_
   simp
   refine Filter.EventuallyEq.smul (by rfl) ?_
   exact SchwartzMap.coeFn_toLp _
 
+
+-- Want to define `φ ↦ ∫ x, f x • φ x` as a CLM `𝓢(E, F) →L[𝕜] F` where `f : Lp 𝕜 p`.
+-- Two options for how to do this...
+--
+-- 1. Define `g ↦ f • g` as a CLM `Lp_smul_CLM g : Lp F q →L[𝕜] Lp F 1`,
+-- then use `integralCLM ∘ Lp_smul_CLM g ∘ SchwartzMap.toLp_CLM`.
+-- TODO: Implement `SchwartzMap.toLp_CLM` rather than `SchwartzMap.toL1_CLM`.
+--
+-- 2. Define `φ ↦ f ∘ φ` as a CLM `SchwartzMap.Lp_smul_CLM g : 𝓢(E, F) →L[𝕜] 𝓢(E, F)`,
+-- then use `integralCLM ∘ SchwartzMap.toL1_CLM ∘ SchwartzMap.Lp_smul_CLM g`.
+--
+-- Option 1 is more broadly useful (for `Lp` rather than just `SchwartzMap`).
+-- Option 2 is specific to `SchwartzMap`, but this may be advantageous.
+-- For example, we can easily go from `SchwartzMap` to `Lp` but not vice versa.
+-- Perhaps this could be remedied showing that `SchwartzMap` is dense in `Lp`?
+
+-- TODO: Eventually define as bilinear CLM `Lp 𝕜 p →L[𝕜] 𝓢(E, F) →L[𝕜] F`?
+-- Check type classes.
+#check fun (p : ℝ≥0∞) [Fact (1 ≤ p)] => Lp (α := E) 𝕜 p →L[𝕜] 𝓢(E, F) →L[𝕜] F
+
+-- Can we follow `SchwartzMap.evalCLM` and use `SchwartzMap E (E →L[ℝ] F)`?
+-- Maybe it's better to propose notation `E →𝓢 F` and `E →ℒ[p] 𝕜`?
+-- We have a function `smul g φ x : F`. Rewrite as `smul x g φ`?
+-- This might have type... `SchwartzMap E (Lp {E} 𝕜 p →L[𝕜] F)`?
+-- Check type classes.
+#check fun (p : ℝ≥0∞) [Fact (1 ≤ p)] => SchwartzMap E (Lp (α := E) 𝕜 p →L[𝕜] F)
+-- This would require `NormedSpace ℝ (Lp {E} 𝕜 p →L[𝕜] F)`.
+-- That is, linear functionals on `Lp` as a `NormedSpace`? What's missing? `SMul ℝ` etc.
+-- Although, if we *can* this, can we still obtain the *integral* of `f • φ` as a CLM?
+
 end SchwartzMap
+
+
+-- TODO: Move to `LpHoelder`.
+-- Easier to keep it here for planning; avoids need to rebuild dependency.
+namespace Lp
+
+variable {E : Type*} [MeasurableSpace E]
+variable {μ : Measure E}
+
+variable {𝕜 : Type*} [NormedField 𝕜]
+variable {F : Type*} [NormedAddCommGroup F]
+-- variable [SMulZeroClass 𝕜 F] [BoundedSMul 𝕜 F]
+
+variable {p : ℝ≥0∞} [hp : Fact (1 ≤ p)]
+variable {f : Lp 𝕜 p μ}
+
+/-- Defines `g ↦ ∫ x, f x • g x` with `f : Lp` and `g : Lq` as a CLM.
+
+TODO: Define as a bilinear CLM?
+-/
+noncomputable def Lp_smul_CLM {p : ℝ≥0∞} [hp : Fact (1 ≤ p)] (f : Lp 𝕜 p μ) :
+    Lp 𝕜 2 μ →L[𝕜] Lp 𝕜 1 μ where
+  toFun :=
+
+    sorry
+  map_add' := sorry
+  map_smul' := sorry
+  cont := sorry
+
+end Lp
 
 
 -- -- Plan is to define mapping from `L1` to `L1`,
