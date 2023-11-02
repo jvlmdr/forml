@@ -103,9 +103,8 @@ lemma coeFn_apply {f : 𝓢(E, F)} {x : E} : f x = f.toFun x := rfl
 
 lemma coeFn {f : 𝓢(E, F)} : f = f.toFun := rfl
 
--- Need to have `g : E → ℝ` because `SchwartzMap` uses `ContDiff ℝ`.
--- Lemma described here:
--- https://math.stackexchange.com/questions/4303036/product-of-a-schwartz-function-and-a-function-with-polynomial-bonuded-derivative
+
+/-- The product of a Schwartz function and a function with polynomial-bounded derivatives as a Schwartz function. -/
 def hasTemperateGrowth_smul [NormedSpace ℝ 𝕜]
     {g : E → ℝ} (hg : Function.HasTemperateGrowth g) (f : 𝓢(E, F)) : 𝓢(E, F) where
   toFun := g • (f : E → F)
@@ -113,58 +112,80 @@ def hasTemperateGrowth_smul [NormedSpace ℝ 𝕜]
   decay' := by
     refine decay_of_decay₁ ?_
     intro k n
-    -- TODO: More succinct way to write this.
+    -- Change goal using bound on norm_iteratedFDeriv_smul.
     have h_deriv (x : E) (n : ℕ) := norm_iteratedFDeriv_smul_le hg.1 (f.smooth ⊤) x (le_top : (n : ENat) ≤ ⊤)
-    -- refine Exists.imp (fun C h x => le_trans (mul_le_mul_of_nonneg_left (h_deriv x n) (by simp)) (h x)) ?_; clear this
+    -- TODO: Should be possible to avoid writing out long proposition?
+    -- refine Exists.imp (fun C h x => le_trans (mul_le_mul_of_nonneg_left (h_deriv x n) (by simp)) (h x)) ?_
     have (C) :
         (∀ (x : E), HPow.hPow (1 + ‖x‖) k * (∑ i in Finset.range (n + 1),
-          (n.choose i : ℝ) * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖) ≤ C) →
+          n.choose i * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖) ≤ C) →
         (∀ (x : E), HPow.hPow (1 + ‖x‖) k * ‖iteratedFDeriv ℝ n (g • (f : E → F)) x‖ ≤ C)
     . intro h x
       refine le_trans ?_ (h x)
       exact mul_le_mul_of_nonneg_left (h_deriv x n) (by simp)
-    refine Exists.imp this ?_; clear this h_deriv
+    refine Exists.imp this ?_
+    clear this h_deriv
+    -- If we have an upper bound for each summand, then we have an upper bound for the sum.
+    -- Easier to define in abstract terms. Could extract as a lemma?
+    have (q : ℕ → E → ℝ) (m : ℕ) :
+        (∀ i ∈ Finset.range m, ∃ C, ∀ x, q i x ≤ C) → (∃ C, ∀ x, ∑ i in Finset.range m, q i x ≤ C)
+    . intro h
+      have := Finset.sum_induction q (fun (qi : E → ℝ) => ∃ C, ∀ x, qi x ≤ C) ?_ ?_ h
+      rotate_left
+      . simp
+        intro qi qi' C hi C' hi'
+        use C + C'
+        intro x
+        exact add_le_add (hi x) (hi' x)
+      . simp
+        use 0
+      simp at this
+      exact this
+    -- Move the multiplier inside the summation and then apply.
+    simp [Finset.mul_sum]
+    refine this _ _ ?_
+    clear this
+    intro i _
     have hg_temp := hg.2
-    -- have hf_decay := f.decay
     have hf_decay₁ := f.decay₁
-
-    have h_decay' (i) : ∃ C, ∀ (x : E), HPow.hPow (1 + ‖x‖) k *
-        ((n.choose i : ℝ) * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖) ≤ C
-    . specialize hg_temp i
-      rcases hg_temp with ⟨k_g, ⟨C_g, hC_g⟩⟩
-      -- Want to choose `k_f` such that we can use
-      -- `(1 + ‖x‖) ^ k_f * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_f`
-      -- with the existing condition
-      -- `‖iteratedFDeriv ℝ i g x‖ ≤ C_g * (1 + ‖x‖) ^ k_g`
-      -- to obtain
-      -- `(1 + ‖x‖) ^ k * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f`.
-      -- The two conditions together give us
-      -- `(1 + ‖x‖) ^ k_f * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f * (1 + ‖x‖) ^ k_g`
-      -- `(1 + ‖x‖) ^ k_f * (1 + ‖x‖)⁻¹ ^ k_g * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f`
-      -- Therefore, use `k_f = k + k_g`.-- rcases hf_decay₁ with ⟨C_f, hC_f⟩
-      specialize hf_decay₁ (k + k_g) (n - 1)
-      rcases hf_decay₁ with ⟨C_f, hC_f⟩
-      use (n.choose i) * C_g * C_f
-      intro x
-      specialize hC_g x
-      specialize hC_f x
-      simp [pow_add] at hC_f
-      -- Looks good; some re-arranging to do.
-      -- Can change form of `have`, so confirm that it suffices first.
-      sorry
-
-    -- -- Convert bound on each `iteratedFDeriv` to a bound on the sum (using countable).
-    -- have hC : ∃ C, ∀ x, ∑ i in Finset.range (n + 1), HPow.hPow ‖x‖ k * ‖iteratedFDeriv ℝ i f x‖ ≤ C
-    -- . induction n with
-    --   | zero => simpa using hf_decay 0
-    --   | succ n hi =>
-    --     simp [Finset.sum_range_succ _ (n + 1)]
-    --     rcases hi with ⟨Ci, hCi⟩
-    --     rcases hf_decay (n + 1) with ⟨Cn, hCn⟩
-    --     use Ci + Cn
-    --     intro x
-    --     exact add_le_add (hCi x) (hCn x)
-    sorry
+    specialize hg_temp i
+    rcases hg_temp with ⟨k_g, ⟨C_g, hC_g⟩⟩
+    -- Want to choose `k_f` such that we can use
+    -- `(1 + ‖x‖) ^ k_f * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_f`
+    -- with the existing condition
+    -- `‖iteratedFDeriv ℝ i g x‖ ≤ C_g * (1 + ‖x‖) ^ k_g`
+    -- to obtain
+    -- `(1 + ‖x‖) ^ k * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f`.
+    -- The two conditions together give us
+    -- `(1 + ‖x‖) ^ k_f * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f * (1 + ‖x‖) ^ k_g`
+    -- `(1 + ‖x‖) ^ k_f * (1 + ‖x‖)⁻¹ ^ k_g * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f`
+    -- Therefore, use `k_f = k + k_g`.
+    specialize hf_decay₁ (k + k_g) (n - i)
+    rcases hf_decay₁ with ⟨C_f, hC_f⟩
+    use n.choose i * C_g * C_f
+    intro x
+    specialize hC_g x
+    specialize hC_f x
+    simp [pow_add] at hC_f
+    -- Eliminate the `choose` term.
+    simp [← mul_assoc]
+    rw [mul_comm _ (Nat.choose _ _ : ℝ)]
+    simp [mul_assoc]
+    refine mul_le_mul_of_nonneg_left ?_ (Nat.cast_nonneg _)
+    simp [← mul_assoc]
+    -- Take product of two conditions, then just re-arrange.
+    -- Eliminate the `(1 + ‖x‖) ^ k_g` term.
+    rw [mul_comm] at hC_g
+    rw [mul_comm (_ ^ _) (_ ^ _)] at hC_f
+    have := mul_le_mul hC_g hC_f ?_ ?_
+    rotate_left
+    . refine mul_nonneg (mul_nonneg ?_ ?_) ?_ <;> simp
+    . exact le_trans (by simp) hC_g
+    rw [mul_comm] at this
+    simp [mul_assoc] at this
+    rw [mul_comm ‖_‖ ‖_‖] at this
+    simp [← mul_assoc] at this
+    exact this
 
 
 -- TODO: Define CLMs for `Lp_smul` and `HasTemperateGrowth_smul`?
