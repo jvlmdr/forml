@@ -111,74 +111,46 @@ def hasTemperateGrowth_smul [NormedSpace ℝ 𝕜]
   toFun := g • (f : E → F)
   smooth' := ContDiff.smul hg.1 (f.smooth ⊤)
   decay' := by
+    refine decay_of_decay₁ ?_
     intro k n
     -- TODO: More succinct way to write this.
     have h_deriv (x : E) (n : ℕ) := norm_iteratedFDeriv_smul_le hg.1 (f.smooth ⊤) x (le_top : (n : ENat) ≤ ⊤)
     -- refine Exists.imp (fun C h x => le_trans (mul_le_mul_of_nonneg_left (h_deriv x n) (by simp)) (h x)) ?_; clear this
     have (C) :
-        (∀ (x : E), HPow.hPow ‖x‖ k * (∑ i in Finset.range (n + 1),
+        (∀ (x : E), HPow.hPow (1 + ‖x‖) k * (∑ i in Finset.range (n + 1),
           (n.choose i : ℝ) * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖) ≤ C) →
-        (∀ (x : E), HPow.hPow ‖x‖ k * ‖iteratedFDeriv ℝ n (g • (f : E → F)) x‖ ≤ C)
+        (∀ (x : E), HPow.hPow (1 + ‖x‖) k * ‖iteratedFDeriv ℝ n (g • (f : E → F)) x‖ ≤ C)
     . intro h x
       refine le_trans ?_ (h x)
       exact mul_le_mul_of_nonneg_left (h_deriv x n) (by simp)
     refine Exists.imp this ?_; clear this h_deriv
     have hg_temp := hg.2
-    have hf_decay := f.decay
-    have h_decay' (i) : ∃ C, ∀ (x : E), HPow.hPow ‖x‖ k *
+    -- have hf_decay := f.decay
+    have hf_decay₁ := f.decay₁
+
+    have h_decay' (i) : ∃ C, ∀ (x : E), HPow.hPow (1 + ‖x‖) k *
         ((n.choose i : ℝ) * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖) ≤ C
-    . rcases hg_temp i with ⟨k_g, ⟨C_g, hC_g⟩⟩
+    . specialize hg_temp i
+      rcases hg_temp with ⟨k_g, ⟨C_g, hC_g⟩⟩
       -- Want to choose `k_f` such that we can use
-      -- `‖x‖ ^ k_f * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_f`
+      -- `(1 + ‖x‖) ^ k_f * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_f`
       -- with the existing condition
       -- `‖iteratedFDeriv ℝ i g x‖ ≤ C_g * (1 + ‖x‖) ^ k_g`
       -- to obtain
-      -- `‖x‖ ^ k * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f`.
+      -- `(1 + ‖x‖) ^ k * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f`.
       -- The two conditions together give us
-      -- `‖x‖ ^ k_f * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f * (1 + ‖x‖) ^ k_g`
-      -- `‖x‖ ^ k_f * (1 + ‖x‖)⁻¹ ^ k_g * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f`
-      -- Therefore, it would suffice to show that
-      -- `‖x‖ ^ k ≤ ‖x‖ ^ k_f * (1 + ‖x‖)⁻¹ ^ k_g`
-      -- Unfortunately, it would be easier to show the reverse.
-      -- That is, choosing `k_f = k + k_g` makes the *rhs* `‖x‖ ^ k * (‖x‖ / (1 + ‖x‖)) ^ k_g ≤ ‖x‖ ^ k`.
-
-      -- We can instead try to use `BigO`?
-      -- Let us rewrite the desired condition as
-      -- `(1 + ‖x‖) ^ k_g * ‖x‖ ^ k * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f * (1 + ‖x‖) ^ k_g`.
-      -- Comparing this to the condition we have
-      -- `‖x‖ ^ k_f * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f * (1 + ‖x‖) ^ k_g`
-      -- it would suffice to show that
-      -- `(1 + ‖x‖) ^ k_g * ‖x‖ ^ k ≤ ‖x‖ ^ k_f`.
-      -- We can ignore the case where `‖x‖ = 0`.
-      -- Using int rather than nat, we can write
-      -- `(1 + ε + ‖x‖) ^ k_g ≤ (ε + ‖x‖) ^ (k_f - k)`
-      -- If we choose `k_f = k_g + k + d`, then this might be achieved with an additional constant
-      -- `(1 + ε + ‖x‖) ^ k_g ≤ c * (ε + ‖x‖) ^ (k_g + d)`
-      -- Perhaps we can choose `d = 0`?
-
-      -- Alternatively, it might be easier to use `decay₁`?
-      -- This itself might need to be proved using `BigO`?
-
-      generalize hk_f : k + k_g = k_f
-      rcases hf_decay k_f (n - i) with ⟨C_f, ⟨hC_f_pos, hC_f⟩⟩
+      -- `(1 + ‖x‖) ^ k_f * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f * (1 + ‖x‖) ^ k_g`
+      -- `(1 + ‖x‖) ^ k_f * (1 + ‖x‖)⁻¹ ^ k_g * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ C_g * C_f`
+      -- Therefore, use `k_f = k + k_g`.-- rcases hf_decay₁ with ⟨C_f, hC_f⟩
+      specialize hf_decay₁ (k + k_g) (n - 1)
+      rcases hf_decay₁ with ⟨C_f, hC_f⟩
       use (n.choose i) * C_g * C_f
       intro x
-      -- Eliminate the `choose`.
-      simp [← mul_assoc]
-      rw [mul_comm _ (n.choose i : ℝ)]
-      simp [mul_assoc]
-      refine mul_le_mul_of_nonneg_left ?_ (Nat.cast_nonneg _)
-      -- Introduce `(1 + ‖x‖) ^ _` on both sides.
-      rw [← mul_le_mul_left (pow_pos (one_add_norm_pos x) k_g)]
-      simp only [← mul_assoc]
-      have : HPow.hPow ‖x‖ k_f * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ HPow.hPow (1 + ‖x‖) k_g * C_g * C_f
-      . -- calc, mul_le_mul
-        sorry
-      refine le_trans ?_ this; clear this
-      simp [mul_assoc]
-      rw [← mul_assoc]
-      refine mul_le_mul_of_nonneg_right ?_ (by simp [mul_nonneg])
-      -- Prove with `BigO`?
+      specialize hC_g x
+      specialize hC_f x
+      simp [pow_add] at hC_f
+      -- Looks good; some re-arranging to do.
+      -- Can change form of `have`, so confirm that it suffices first.
       sorry
 
     -- -- Convert bound on each `iteratedFDeriv` to a bound on the sum (using countable).

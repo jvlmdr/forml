@@ -63,6 +63,20 @@ lemma decay₁ (f : 𝓢(E, F)) :
   simp at this
   use HPow.hPow (2 : ℝ) k * Finset.sup (Finset.Iic (k, n)) (fun m => SchwartzMap.seminorm ℝ m.1 m.2) f
 
+-- Trivial but may be useful for definitions.
+lemma decay_of_decay₁ {f : E → F}
+    (h : ∀ k n : ℕ, ∃ C : ℝ, ∀ x, HPow.hPow (1 + ‖x‖) k * ‖iteratedFDeriv ℝ n f x‖ ≤ C) :
+    ∀ k n : ℕ, ∃ C : ℝ, ∀ x, HPow.hPow ‖x‖ k * ‖iteratedFDeriv ℝ n f x‖ ≤ C := by
+  intro k n
+  specialize h k n
+  rcases h with ⟨C, hC⟩
+  use C
+  intro x
+  specialize hC x
+  refine le_trans ?_ hC
+  refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg _)
+  simp [pow_le_pow_of_le_left]
+
 /- Re-arranged version of `decay₁`. -/
 lemma norm_iteratedFDeriv_le_pow_one_add_norm (f : 𝓢(E, F)) (r : ℝ) :
     ∀ (n : ℕ), ∃ C, 0 ≤ C ∧ ∀ x, ‖iteratedFDeriv ℝ n f x‖ ≤ C * (1 + ‖x‖) ^ (-r) := by
