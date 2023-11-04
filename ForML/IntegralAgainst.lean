@@ -104,9 +104,13 @@ lemma coeFn_apply {f : 𝓢(E, F)} {x : E} : f x = f.toFun x := rfl
 lemma coeFn {f : 𝓢(E, F)} : f = f.toFun := rfl
 
 
-/-- The product of a Schwartz function and a function with polynomial-bounded derivatives as a Schwartz function. -/
-def hasTemperateGrowth_smul [NormedSpace ℝ 𝕜]
-    {g : E → ℝ} (hg : Function.HasTemperateGrowth g) (f : 𝓢(E, F)) : 𝓢(E, F) where
+/-- The product of a Schwartz function and a function with polynomial-bounded derivatives as a Schwartz function.
+
+Requires `g : E → ℝ` rather than `g : E → 𝕜` in order to use `ContDiff.smul`.
+TODO: May be possible to generalize to `g : E → 𝕜'`?
+-/
+def hasTemperateGrowth_smul {g : E → ℝ} (hg : Function.HasTemperateGrowth g)
+    (f : 𝓢(E, F)) : 𝓢(E, F) where
   toFun := g • (f : E → F)
   smooth' := ContDiff.smul hg.1 (f.smooth ⊤)
   decay' := by
@@ -186,6 +190,16 @@ def hasTemperateGrowth_smul [NormedSpace ℝ 𝕜]
     rw [mul_comm ‖_‖ ‖_‖] at this
     simp [← mul_assoc] at this
     exact this
+
+
+-- TODO: Possible/useful to generalize to `→SL[σ]` with `𝕜` and `𝕜'`?
+def hasTemperateGrowth_smulCLM {g : E → ℝ} (hg : Function.HasTemperateGrowth g) :
+    𝓢(E, F) →L[𝕜] 𝓢(E, F) :=
+  mkCLM (fun φ x => (g • φ) x)
+    (fun φ θ x => by simp)
+    (fun a φ x => smul_comm (g x) a (φ x))
+    (fun φ => ContDiff.smul hg.1 (φ.smooth ⊤))
+    (fun m => by sorry)
 
 
 -- TODO: Define CLMs for `Lp_smul` and `HasTemperateGrowth_smul`?

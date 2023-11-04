@@ -50,7 +50,6 @@ end IteratedDeriv
 namespace Complex
 
 variable {𝕜 : Type*} [NontriviallyNormedField 𝕜] [NormedAlgebra 𝕜 ℝ]
--- variable {𝕜' : Type*} [NontriviallyNormedField 𝕜'] [NormedSpace 𝕜 𝕜'] [SMulCommClass 𝕜 𝕜' 𝕜']
 
 lemma contDiff_exp_smul_real_I {n : ℕ∞} : ContDiff ℝ n fun (x : ℝ) => exp (x • I) :=
   ContDiff.cexp (ContDiff.smul contDiff_id contDiff_const)
