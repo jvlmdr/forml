@@ -7,6 +7,9 @@ import Mathlib.MeasureTheory.Measure.VectorMeasure
 import ForML.LpHoelder
 import ForML.SchwartzLp
 
+-- https://github.com/leanprover/lean4/issues/2220
+local macro_rules | `($x ^ $y) => `(HPow.hPow $x $y)
+
 open MeasureTheory SchwartzSpace
 open scoped BigOperators Real NNReal ENNReal
 
@@ -121,9 +124,9 @@ def hasTemperateGrowth_smul {g : E → ℝ} (hg : Function.HasTemperateGrowth g)
     -- TODO: Should be possible to avoid writing out long proposition?
     -- refine Exists.imp (fun C h x => le_trans (mul_le_mul_of_nonneg_left (h_deriv x n) (by simp)) (h x)) ?_
     have (C) :
-        (∀ (x : E), HPow.hPow (1 + ‖x‖) k * (∑ i in Finset.range (n + 1),
+        (∀ (x : E), (1 + ‖x‖) ^ k * (∑ i in Finset.range (n + 1),
           n.choose i * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖) ≤ C) →
-        (∀ (x : E), HPow.hPow (1 + ‖x‖) k * ‖iteratedFDeriv ℝ n (g • (f : E → F)) x‖ ≤ C)
+        (∀ (x : E), (1 + ‖x‖) ^ k * ‖iteratedFDeriv ℝ n (g • (f : E → F)) x‖ ≤ C)
     . intro h x
       refine le_trans ?_ (h x)
       exact mul_le_mul_of_nonneg_left (h_deriv x n) (by simp)
@@ -192,6 +195,209 @@ def hasTemperateGrowth_smul {g : E → ℝ} (hg : Function.HasTemperateGrowth g)
     exact this
 
 
+lemma hasTemperateGrowth_smul_apply {g : E → ℝ} (hg : Function.HasTemperateGrowth g) (f : 𝓢(E, F)) :
+    hasTemperateGrowth_smul hg f x = g x • f x := rfl
+
+lemma coeFn_hasTemperateGrowth_smul {g : E → ℝ} (hg : Function.HasTemperateGrowth g) (f : 𝓢(E, F)) :
+    hasTemperateGrowth_smul hg f = fun x => g x • f x := rfl
+
+lemma hasTemperateGrowth_smul_add {g : E → ℝ} (hg : Function.HasTemperateGrowth g) (φ θ : 𝓢(E, F)) :
+    hasTemperateGrowth_smul hg (φ + θ) = hasTemperateGrowth_smul hg φ + hasTemperateGrowth_smul hg θ := by
+  ext x
+  simp [hasTemperateGrowth_smul_apply]
+
+lemma hasTemperateGrowth_smul_smul {g : E → ℝ} (hg : Function.HasTemperateGrowth g) (c : 𝕜) (φ : 𝓢(E, F)) :
+    hasTemperateGrowth_smul hg (c • φ) = c • hasTemperateGrowth_smul hg φ := by
+  ext x
+  simp [hasTemperateGrowth_smul_apply]
+  rw [smul_comm]
+
+
+-- TODO: Could it be easier to prove `cont` directly, rather than use `mkCLM`?
+
+-- /-- Bound the seminorm of `g • f` by the seminorm of `f` for `mkCLM`. -/
+-- lemma hasTemperateGrowth_smul_bound_le {g : E → ℝ} (hg : Function.HasTemperateGrowth g)
+--     (k n : ℕ) (f : 𝓢(E, F)) (x : E) (C' : ℝ) :
+--     ‖x‖ ^ k * ‖iteratedFDeriv ℝ n (fun x => g x • f x) x‖ ≤
+--       C' * (Finset.Iic (k, n)).sup (schwartzSeminormFamily 𝕜 E F) f := by
+--   -- Already showed that `g • f` is a Schwartz function.
+--   -- Do we have the required bound from that?
+--   simp_rw [← coeFn_hasTemperateGrowth_smul hg]
+--   have hgf := (hasTemperateGrowth_smul hg f).decay k n
+--   rcases hgf with ⟨C_gf, hC_gf, hgf⟩
+--   specialize hgf x
+--   refine le_trans hgf ?_
+--   have hf := f.decay k n
+--   simp [schwartzSeminormFamily]
+--   sorry
+
+
+-- Not good enough for `mkCLM`; upper bound depends on `x`!
+lemma hasTemperateGrowth_smul_bound' {g : E → ℝ} (hg : Function.HasTemperateGrowth g) (k n : ℕ) :
+    ∀ (f : 𝓢(E, F)) (x : E),
+      ‖x‖ ^ k * ‖iteratedFDeriv ℝ n (fun x => g x • f x) x‖ ≤
+        (↑(2 ^ k : ℕ) * (∑ i in Finset.range (n + 1), (n.choose i) * ‖iteratedFDeriv ℝ i g x‖)) *
+          (Finset.Iic (k, n)).sup (schwartzSeminormFamily 𝕜 E F) f := by
+  intro f x
+  -- Apply `norm_iteratedFDeriv_smul_le` to obtain sum.
+  refine le_trans (mul_le_mul_of_nonneg_left
+    (norm_iteratedFDeriv_smul_le hg.1 (f.smooth ⊤) x le_top)
+    (pow_nonneg (norm_nonneg x) _)) ?_
+
+  -- Move `‖x‖ ^ k` inside sum and bound each summand.
+  rw [Finset.mul_sum]
+  suffices : ∀ i ∈ Finset.range (n + 1),
+      ‖x‖ ^ k * ((n.choose i) * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖) ≤
+      ↑(2 ^ k : ℕ) * ((n.choose i) * ‖iteratedFDeriv ℝ i g x‖) * ((Finset.Iic (k, n)).sup (schwartzSeminormFamily 𝕜 E F) f)
+  . refine le_trans (Finset.sum_le_sum this) ?_
+    rw [← Finset.sum_mul, ← Finset.mul_sum]
+
+  intro i hi
+  -- Move common terms to the left.
+  rw [mul_comm (‖x‖ ^ k)]
+  rw [mul_assoc (↑(2 ^ k) : ℝ)]
+  rw [mul_comm (↑(2 ^ k) : ℝ)]
+  simp only [mul_assoc]
+  refine mul_le_mul_of_nonneg_left ?_ (Nat.cast_nonneg _)
+  refine mul_le_mul_of_nonneg_left ?_ (norm_nonneg _)
+  -- Now obtain bound for `f`.
+  rw [mul_comm _ (‖x‖ ^ k)]
+  rw [mul_comm _ (↑(2 ^ k) : ℝ)]
+  simp_rw [schwartzSeminormFamily]
+  -- Switch to `(1 + ‖x‖) ^ k`.
+  refine le_trans (mul_le_mul_of_nonneg_right (?_ : ‖x‖ ^ k ≤ (1 + ‖x‖) ^ k) (norm_nonneg _)) ?_
+  . refine pow_le_pow_of_le_left ?_ ?_ k
+    . exact norm_nonneg x
+    . exact le_add_of_nonneg_left zero_le_one
+  -- Need to use pair.
+  generalize hm : (k, n) = m
+  have hk : k = m.1 := by rw [← hm]
+  have hn : n = m.2 := by rw [← hm]
+  rw [hk, hn]
+  exact one_add_le_sup_seminorm_apply (Nat.le_refl m.1) (Nat.sub_le m.2 i) f x
+
+
+lemma exists_hasTemperateGrowth_smul_bound {g : E → ℝ} (hg : Function.HasTemperateGrowth g) (k n : ℕ) :
+    ∃ (s : Finset (ℕ × ℕ)) (C : ℝ), 0 ≤ C ∧ ∀ (f : 𝓢(E, F)) (x : E),
+      ‖x‖ ^ k * ‖iteratedFDeriv ℝ n (fun x => g x • f x) x‖ ≤
+      C * s.sup (schwartzSeminormFamily 𝕜 E F) f := by
+  rcases hg with ⟨hg_smooth, hg_bound⟩
+
+  -- Obtain upper bound that holds for all `0 ≤ i ≤ n`. Use maximum `k_g` and maximum `C_g`.
+  have (m) : ∃ k C, 0 ≤ C ∧ ∀ i ∈ Finset.range m, ∀ (x : E), ‖iteratedFDeriv ℝ i g x‖ ≤ C * (1 + ‖x‖) ^ k
+  . induction m with
+    | zero => simp; use 0
+    | succ m h_ind =>
+      specialize hg_bound m
+      rcases hg_bound with ⟨k_m, C_m, hC_m⟩
+      rcases h_ind with ⟨k_i, C_i, ⟨hC_i_nonneg, hC_i⟩⟩
+      refine ⟨max k_i k_m, max C_i C_m, ?_⟩
+      refine And.intro (le_trans hC_i_nonneg (by simp)) ?_
+      intro i hi x
+      simp [Nat.lt_succ] at hi
+      simp at hC_i
+      cases lt_or_eq_of_le hi with
+      | inl hi =>
+        specialize hC_i i hi x
+        refine le_trans hC_i ?_
+        refine mul_le_mul ?_ (pow_le_pow ?_ ?_) ?_ (le_trans hC_i_nonneg ?_) <;> simp
+      | inr hi =>
+        rw [hi]
+        specialize hC_m x
+        refine le_trans hC_m ?_
+        refine mul_le_mul ?_ (pow_le_pow ?_ ?_) ?_ (le_trans hC_i_nonneg ?_) <;> simp
+  specialize this (n + 1)
+  rcases this with ⟨k_g, C_g, ⟨hC_g_nonneg, hC_g⟩⟩
+
+  -- Note: Could use `max k k_g` for tighter bound?
+  use Finset.Iic (k + k_g, n)
+  use 2 ^ (k + k_g) * 2 ^ n * C_g
+  norm_num
+  simp [hC_g_nonneg]
+  intro f x
+  refine le_trans (mul_le_mul_of_nonneg_left
+    (norm_iteratedFDeriv_smul_le hg_smooth (f.smooth ⊤) x (le_top : (n : ℕ∞) ≤ ⊤))
+    (by simp : 0 ≤ ‖x‖ ^ k)) ?_
+
+  -- Move `‖x‖ ^ k` inside sum and bound each summand.
+  rw [Finset.mul_sum]
+  suffices : ∀ i ∈ Finset.range (n + 1),
+      ‖x‖ ^ k * (n.choose i * ‖iteratedFDeriv ℝ i g x‖ * ‖iteratedFDeriv ℝ (n - i) f x‖) ≤
+      2 ^ (k + k_g) * n.choose i * C_g * (Finset.Iic (k + k_g, n)).sup (schwartzSeminormFamily 𝕜 E F) f
+  . refine le_trans (Finset.sum_le_sum this) ?_
+    clear this
+    simp [← Finset.sum_mul, ← Finset.mul_sum]
+    norm_cast
+    rw [Nat.sum_range_choose]
+
+  intro i hi
+  simp [Nat.lt_succ] at hi hC_g
+  -- Eliminate `choose` term.
+  rw [mul_comm (‖x‖ ^ k)]
+  rw [mul_comm _ (n.choose i : ℝ)]
+  simp [mul_assoc, Nat.choose_pos hi]
+  -- Replace `‖x‖` with `1 + ‖x‖`.
+  simp [← mul_assoc]
+  refine le_trans (mul_le_mul_of_nonneg_left (?_ : ‖x‖ ^ k ≤ (1 + ‖x‖) ^ k) ?_) ?_
+  . refine pow_le_pow_of_le_left ?_ ?_ k
+    . exact norm_nonneg x
+    . exact le_add_of_nonneg_left zero_le_one
+  . refine mul_nonneg ?_ ?_ <;> exact norm_nonneg _
+  -- Bound on `g`.
+  simp [mul_assoc]
+  refine le_trans (mul_le_mul_of_nonneg_right (hC_g i hi x) ?_) ?_
+  . exact mul_nonneg (norm_nonneg _) (by simp)
+  -- Eliminate `C_g`.
+  simp [← mul_assoc]
+  rw [mul_comm _ C_g]
+  simp [mul_assoc]
+  refine mul_le_mul_of_nonneg_left ?_ hC_g_nonneg
+  -- Merge terms.
+  rw [mul_comm _ (_ ^ k)]
+  simp [← mul_assoc]
+  rw [← pow_add]
+  rw [add_comm k_g k]
+  -- Bound on `f`.
+  have : (1 + ‖x‖) ^ (k + k_g) * ‖iteratedFDeriv ℝ (n - i) f x‖ ≤ _ :=
+    one_add_le_sup_seminorm_apply (𝕜 := 𝕜) (m := (k + k_g, n)) ?_ ?_ f x
+    <;> simp
+  simp at this
+  exact this
+
+
+/-- Bound the seminorm of `g • f` by the seminorm of `f` for `mkCLM`. -/
+lemma hasTemperateGrowth_smul_bound'' {g : E → ℝ} (hg : Function.HasTemperateGrowth g) (k n : ℕ) {C : ℝ} :
+    ∀ (f : 𝓢(E, F)) (x : E),
+      ‖x‖ ^ k * ‖iteratedFDeriv ℝ n (fun x => g x • f x) x‖ ≤
+      (2 ^ k) * C * (Finset.Iic (k, n)).sup (schwartzSeminormFamily 𝕜 E F) f := by
+  intro f x
+  refine le_trans (mul_le_mul_of_nonneg_right (?_ : ‖x‖ ^ k ≤ (1 + ‖x‖) ^ k) (norm_nonneg _)) ?_
+  . refine pow_le_pow_of_le_left ?_ ?_ k
+    . exact norm_nonneg x
+    . exact le_add_of_nonneg_left zero_le_one
+
+  rw [← coeFn_hasTemperateGrowth_smul hg]
+  have (k' n' : ℕ) (hk : k' ≤ k) (hn : n' ≤ n) :=
+    one_add_le_sup_seminorm_apply (𝕜 := 𝕜) (m := (k, n)) hk hn (hasTemperateGrowth_smul hg f) x
+  simp at this
+  refine le_trans (this k n (by simp) (by simp)) ?_
+  simp [mul_assoc]
+  -- Is this useful? sup ≤ sup...
+  -- Need to prove that seminorms of `g • f` are bounded by seminorms of `f`...
+  sorry
+
+
+/-- Bound the seminorm of `g • f` by the seminorm of `f` for `mkCLM`. -/
+lemma exists_hasTemperateGrowth_smul_bound' {g : E → ℝ} (hg : Function.HasTemperateGrowth g) (k n : ℕ) :
+    ∃ (s : Finset (ℕ × ℕ)) (C : ℝ), 0 ≤ C ∧
+      ∀ (f : 𝓢(E, F)) (x : E),
+        ‖x‖ ^ k * ‖iteratedFDeriv ℝ n (g • (f : E → F)) x‖ ≤
+          C * s.sup (schwartzSeminormFamily 𝕜 E F) f := by
+  use Finset.Iic (k, n)
+  -- use ↑(2 ^ k : ℕ) * (∑ i in Finset.range (n + 1), (n.choose i) * ‖iteratedFDeriv ℝ i g x‖)
+  sorry
+
+
 -- TODO: Possible/useful to generalize to `→SL[σ]` with `𝕜` and `𝕜'`?
 def hasTemperateGrowth_smulCLM {g : E → ℝ} (hg : Function.HasTemperateGrowth g) :
     𝓢(E, F) →L[𝕜] 𝓢(E, F) :=
@@ -199,7 +405,7 @@ def hasTemperateGrowth_smulCLM {g : E → ℝ} (hg : Function.HasTemperateGrowth
     (fun φ θ x => by simp)
     (fun a φ x => smul_comm (g x) a (φ x))
     (fun φ => ContDiff.smul hg.1 (φ.smooth ⊤))
-    (fun m => by sorry)
+    (fun m => exists_hasTemperateGrowth_smul_bound hg m.1 m.2)
 
 
 -- TODO: Define CLMs for `Lp_smul` and `HasTemperateGrowth_smul`?

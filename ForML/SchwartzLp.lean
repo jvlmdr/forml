@@ -13,6 +13,9 @@ import Mathlib.Analysis.SpecialFunctions.JapaneseBracket
 import Mathlib.MeasureTheory.Function.L1Space
 import Mathlib.MeasureTheory.Integral.Bochner
 
+-- https://github.com/leanprover/lean4/issues/2220
+local macro_rules | `($x ^ $y) => `(HPow.hPow $x $y)
+
 open MeasureTheory SchwartzSpace
 
 -- Eventual goal: Prove that Fourier transform of Dirac is const and vice versa.
@@ -57,16 +60,17 @@ TODO: Check if this is more simply obtained with
 `le_rpow_one_add_norm_iff_norm_le` and `SchwartzMap.norm_pow_mul_le_seminorm`?
 -/
 lemma decay₁ (f : 𝓢(E, F)) :
-    ∀ (k n : ℕ), ∃ C, ∀ x, HPow.hPow (1 + ‖x‖) k * ‖iteratedFDeriv ℝ n f x‖ ≤ C := by
+    ∀ (k n : ℕ), ∃ C, ∀ x, (1 + ‖x‖) ^ k * ‖iteratedFDeriv ℝ n f x‖ ≤ C := by
   intro k n
   have := @one_add_le_sup_seminorm_apply ℝ E F _ _ _ _ _ _ _ ⟨k, n⟩ k n (by simp) (by simp) f
   simp at this
-  use HPow.hPow (2 : ℝ) k * Finset.sup (Finset.Iic (k, n)) (fun m => SchwartzMap.seminorm ℝ m.1 m.2) f
+  use ((2 : ℝ) ^ k) * Finset.sup (Finset.Iic (k, n)) (fun m => SchwartzMap.seminorm ℝ m.1 m.2) f
+
 
 -- Trivial but may be useful for definitions.
 lemma decay_of_decay₁ {f : E → F}
-    (h : ∀ k n : ℕ, ∃ C : ℝ, ∀ x, HPow.hPow (1 + ‖x‖) k * ‖iteratedFDeriv ℝ n f x‖ ≤ C) :
-    ∀ k n : ℕ, ∃ C : ℝ, ∀ x, HPow.hPow ‖x‖ k * ‖iteratedFDeriv ℝ n f x‖ ≤ C := by
+    (h : ∀ k n : ℕ, ∃ C : ℝ, ∀ x, (1 + ‖x‖) ^ k * ‖iteratedFDeriv ℝ n f x‖ ≤ C) :
+    ∀ k n : ℕ, ∃ C : ℝ, ∀ x, ‖x‖ ^ k * ‖iteratedFDeriv ℝ n f x‖ ≤ C := by
   intro k n
   specialize h k n
   rcases h with ⟨C, hC⟩
@@ -292,6 +296,9 @@ noncomputable def sup_Iic_seminorm (k n : ℕ) : 𝓢(E, F) → ℝ :=
   fun f => (Finset.Iic (k, n)).sup (schwartzSeminormFamily 𝕜 E F) f
 end Def
 
+lemma sup_Iic_seminorm_apply {k n : ℕ} {f : 𝓢(E, F)} :
+  sup_Iic_seminorm 𝕜 k n f = (Finset.Iic (k, n)).sup (schwartzSeminormFamily 𝕜 E F) f := rfl
+
 -- Now we need to obtain an upper bound of the form:
 -- `∃ C, ∫ x, ‖f x‖ ≤ C * sup_Iic_seminorm 𝕜 k n f`
 -- for some `k` and `n` that we choose.
@@ -307,13 +314,11 @@ lemma pow_one_add_norm_mul_norm_le_two_pow_sup_Iic_seminorm (k : ℕ) (f : 𝓢(
 -- Re-arrange as upper bound of a function by a function.
 -- TODO: Eliminate this lemma? It's trivial and not that useful.
 lemma norm_le_sup_Iic_seminorm_mul_one_add_norm_pow_neg (k : ℕ) (f : 𝓢(E, F)) (x : E) :
-    ‖f x‖ ≤ 2 ^ k * sup_Iic_seminorm 𝕜 k 0 f * (1 + ‖x‖) ^ (-k) := by
+    ‖f x‖ ≤ 2 ^ k * sup_Iic_seminorm 𝕜 k 0 f * (1 + ‖x‖) ^ (-k : ℝ) := by
   simp
   simp [Real.rpow_neg]
   rw [mul_comm, inv_mul_eq_div]
   simp [le_div_iff']
-  -- Introduce and `simp` to get `HPow`s to match.
-  -- Alternatively, could use `HPow.hPow` in all definitions.
   have : (1 + ‖x‖) ^ k * ‖f x‖ ≤ 2 ^ k * sup_Iic_seminorm 𝕜 k 0 f
   . refine pow_one_add_norm_mul_norm_le_two_pow_sup_Iic_seminorm k f x
   simpa
