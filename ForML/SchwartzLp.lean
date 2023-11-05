@@ -305,21 +305,21 @@ lemma sup_Iic_seminorm_apply {k n : ℕ} {f : 𝓢(E, F)} :
 
 -- Obtain inequality relating `‖f x‖` and `sup_Iic_seminorm 𝕜 k 0 f` (i.e. 0-th derivative).
 lemma pow_one_add_norm_mul_norm_le_two_pow_sup_Iic_seminorm (k : ℕ) (f : 𝓢(E, F)) (x : E) :
-    (1 + ‖x‖) ^ k * ‖f x‖ ≤ 2 ^ k * sup_Iic_seminorm 𝕜 k 0 f := by
+    (1 + ‖x‖) ^ k * ‖f x‖ ≤ ↑2 ^ k * sup_Iic_seminorm 𝕜 k 0 f := by
   have := @one_add_le_sup_seminorm_apply 𝕜 E F _ _ _ _ _ _ _ (k, 0) k 0
   simp at this
   specialize this f x
-  simpa [Real.rpow_nat_cast]
+  simpa
 
 -- Re-arrange as upper bound of a function by a function.
 -- TODO: Eliminate this lemma? It's trivial and not that useful.
 lemma norm_le_sup_Iic_seminorm_mul_one_add_norm_pow_neg (k : ℕ) (f : 𝓢(E, F)) (x : E) :
-    ‖f x‖ ≤ 2 ^ k * sup_Iic_seminorm 𝕜 k 0 f * (1 + ‖x‖) ^ (-k : ℝ) := by
+    ‖f x‖ ≤ ↑2 ^ k * sup_Iic_seminorm 𝕜 k 0 f * (1 + ‖x‖) ^ (-k : ℝ) := by
   simp
   simp [Real.rpow_neg]
   rw [mul_comm, inv_mul_eq_div]
   simp [le_div_iff']
-  have : (1 + ‖x‖) ^ k * ‖f x‖ ≤ 2 ^ k * sup_Iic_seminorm 𝕜 k 0 f
+  have : (1 + ‖x‖) ^ k * ‖f x‖ ≤ ↑2 ^ k * sup_Iic_seminorm 𝕜 k 0 f
   . refine pow_one_add_norm_mul_norm_le_two_pow_sup_Iic_seminorm k f x
   simpa
 
@@ -327,7 +327,7 @@ lemma norm_le_sup_Iic_seminorm_mul_one_add_norm_pow_neg (k : ℕ) (f : 𝓢(E, F
 -- TODO: Remove dependence on `SchwartzMap.integrable`?
 lemma integral_norm_le_const_mul_sup_Iic_seminorm
     {r : ℕ} (hr : FiniteDimensional.finrank ℝ E < r) (f : 𝓢(E, F)) :
-    ∫ x, ‖f x‖ ≤ (2 ^ r * ∫ (x : E), (1 + ‖x‖) ^ (-r)) * sup_Iic_seminorm 𝕜 r 0 f := by
+    ∫ x, ‖f x‖ ≤ (↑2 ^ r * ∫ (x : E), (1 + ‖x‖) ^ (-r : ℝ)) * sup_Iic_seminorm 𝕜 r 0 f := by
   simp
   have h_int : Integrable (fun (x : E) => (1 + ‖x‖) ^ (-r : ℝ))
   . refine integrable_one_add_norm ?_
@@ -338,7 +338,6 @@ lemma integral_norm_le_const_mul_sup_Iic_seminorm
   refine integral_mono integrable.norm (h_int.const_mul _) ?_
   intro x
   simp
-  rw [← Real.rpow_nat_cast]
   exact norm_le_sup_Iic_seminorm_mul_one_add_norm_pow_neg r f x
 
 lemma toL1_add (φ θ : 𝓢(E, F)) : (φ + θ).toL1 = φ.toL1 + θ.toL1 := by rfl
@@ -358,7 +357,7 @@ noncomputable def toL1_CLM' : 𝓢(E, F) →L[𝕜] Lp (α := E) F 1 where
     simp [NNReal.smul_def]
     generalize hk : FiniteDimensional.finrank ℝ E + 1 = k
     use Finset.Iic ⟨k, 0⟩
-    have hC : 0 ≤ 2 ^ k * ∫ (x : E), (1 + ‖x‖) ^ (-k)
+    have hC : (0 : ℝ) ≤ ↑2 ^ k * ∫ (x : E), (1 + ‖x‖) ^ (-k : ℝ)
     . simp
       refine integral_nonneg ?_
       intro x
@@ -368,7 +367,6 @@ noncomputable def toL1_CLM' : 𝓢(E, F) →L[𝕜] Lp (α := E) F 1 where
     intro f
     rw [norm_toL1_eq_integral]
     rw [← sup_Iic_seminorm]
-    rw [← Real.rpow_nat_cast]
     refine integral_norm_le_const_mul_sup_Iic_seminorm ?_ _
     simp [← hk]
 end Def
