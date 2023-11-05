@@ -19,7 +19,7 @@ open scoped BigOperators Real NNReal ENNReal
 
 namespace SchwartzMap
 
-variable {E F : Type*}
+variable {𝕜 E F : Type*}
 variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 variable [NormedAddCommGroup F] [NormedSpace ℝ F]
 
@@ -27,7 +27,7 @@ section Lp
 
 variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
 variable [CompleteSpace F]
-variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]  -- Required by `MeasureTheory.integral_smul`.
+variable [NontriviallyNormedField 𝕜]  -- Required by `MeasureTheory.integral_smul`.
 variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
 -- TODO: Define using `g : Lp (α := E) 𝕜 p` or just `g : E → 𝕜`?
@@ -107,9 +107,10 @@ lemma L1_integral_Lp_smul_Lq_eq_integral {p q : ENNReal} (hpq : p⁻¹ + q⁻¹ 
 
 end Lp
 
+
 section HasTemperateGrowth
 
-variable {𝕜 : Type*} [NormedField 𝕜]  -- Don't need `NontriviallyNormedField 𝕜`.
+variable [NormedField 𝕜]  -- Don't need `NontriviallyNormedField 𝕜`.
 variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
 /-- Used to define `hasTemperateGrowth_smul_CLM`. -/
@@ -244,22 +245,22 @@ lemma hasTemperateGrowth_smul_CLM_apply
     {g : E → ℝ} (hg : Function.HasTemperateGrowth g) {φ : 𝓢(E, F)} {x : E} :
     hasTemperateGrowth_smul_CLM 𝕜 hg φ x = g x • φ x := rfl
 
-
--- TODO: Define CLMs for `Lp_smul` and `HasTemperateGrowth_smul`?
-
--- def smul_CLM {p : ENNReal} (hp : 1 ≤ p) {g : E → 𝕜} :
---     𝓢(E, F) →L[𝕜] 𝓢(E, F) where
---   toFun φ := fun x => g x • φ x
---   map_add' := integral_Lp_smul_add hp g
---   map_smul' := integral_Lp_smul_smul g
---   cont := by
---     refine Seminorm.cont_withSeminorms_normedSpace _ (schwartz_withSeminorms 𝕜 E F) _ ?_
---     simp [Seminorm.le_def]
---     conv => arg 1; intro s; arg 1; intro C; intro φ  -- Rename.
---     simp [NNReal.smul_def]
---     sorry
-
 end HasTemperateGrowth
+
+section Integral
+
+variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
+variable [NontriviallyNormedField 𝕜]
+variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+
+variable (𝕜)
+
+noncomputable def integral_hasTemperateGrowth_smul_CLM [CompleteSpace F]
+    {g : E → ℝ} (hg : Function.HasTemperateGrowth g) : 𝓢(E, F) →L[𝕜] F :=
+  ContinuousLinearMap.comp (integralCLM 𝕜) (hasTemperateGrowth_smul_CLM 𝕜 hg)
+
+end Integral
+
 end SchwartzMap
 
 
