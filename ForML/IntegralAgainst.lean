@@ -93,7 +93,7 @@ lemma L1_integral_Lp_smul_Lq_eq_integral {p q : ENNReal} (hpq : p⁻¹ + q⁻¹ 
 
 -- TODO: Eventually define as bilinear CLM `Lp 𝕜 p →L[𝕜] 𝓢(E, F) →L[𝕜] F`?
 -- Check type classes.
-#check fun (p : ℝ≥0∞) [Fact (1 ≤ p)] => Lp (α := E) 𝕜 p →L[𝕜] 𝓢(E, F) →L[𝕜] F
+-- #check fun (p : ℝ≥0∞) [Fact (1 ≤ p)] => Lp (α := E) 𝕜 p →L[𝕜] 𝓢(E, F) →L[𝕜] F
 
 -- Can we follow `SchwartzMap.evalCLM` and use `SchwartzMap E (E →L[ℝ] F)`?
 -- Maybe it's better to propose notation `E →𝓢 F` and `E →ℒ[p] 𝕜`?
@@ -253,11 +253,32 @@ variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volu
 variable [NontriviallyNormedField 𝕜]
 variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
+section Def
 variable (𝕜)
+noncomputable def integral_hasTemperateGrowth_smul_CLM' [CompleteSpace F]
+    {g : E → ℝ} (hg : Function.HasTemperateGrowth g) : 𝓢(E, F) →L[𝕜] F :=
+  ContinuousLinearMap.comp (integralCLM' 𝕜) (hasTemperateGrowth_smul_CLM 𝕜 hg)
+end Def
+
+lemma integral_hasTemperateGrowth_smul_CLM'_apply [CompleteSpace F]
+    {g : E → ℝ} (hg : Function.HasTemperateGrowth g) {φ : 𝓢(E, F)} :
+    integral_hasTemperateGrowth_smul_CLM' 𝕜 hg φ = ∫ (x : E), g x • φ x := by
+  rw [integral_hasTemperateGrowth_smul_CLM']
+  rw [ContinuousLinearMap.comp_apply]
+  rw [integralCLM'_apply]
+  rfl
 
 noncomputable def integral_hasTemperateGrowth_smul_CLM [CompleteSpace F]
-    {g : E → ℝ} (hg : Function.HasTemperateGrowth g) : 𝓢(E, F) →L[𝕜] F :=
-  ContinuousLinearMap.comp (integralCLM 𝕜) (hasTemperateGrowth_smul_CLM 𝕜 hg)
+    {g : E → ℝ} (hg : Function.HasTemperateGrowth g) : 𝓢(E, F) →L[ℝ] F :=
+  integral_hasTemperateGrowth_smul_CLM' ℝ hg
+
+lemma integral_hasTemperateGrowth_smul_CLM_apply [CompleteSpace F]
+    {g : E → ℝ} (hg : Function.HasTemperateGrowth g) {φ : 𝓢(E, F)} :
+    integral_hasTemperateGrowth_smul_CLM hg φ = ∫ (x : E), g x • φ x := by
+  rw [integral_hasTemperateGrowth_smul_CLM]
+  exact integral_hasTemperateGrowth_smul_CLM'_apply hg
+
+-- lemma integral_hasTemperateGrowth_smul_const_eq_smul_integral :
 
 end Integral
 

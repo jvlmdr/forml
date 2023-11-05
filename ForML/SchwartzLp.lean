@@ -277,7 +277,7 @@ lemma norm_toL1_eq_integral (f : 𝓢(E, F)) : ‖toL1 f‖ = ∫ x, ‖f x‖ :
 --   map_add' f g := by rfl
 
 -- Use `Memℒp f 1` to provide `Integrable`.
-lemma integrable {f : 𝓢(E, F)} : Integrable f := by
+lemma integrable (f : 𝓢(E, F)) : Integrable f := by
   rw [← memℒp_one_iff_integrable]
   exact memℒp f 1
 
@@ -335,7 +335,7 @@ lemma integral_norm_le_const_mul_sup_Iic_seminorm
   conv => rhs; rw [mul_assoc]; rhs; rw [mul_comm]
   rw [← mul_assoc]
   rw [← integral_mul_left]
-  refine integral_mono integrable.norm (h_int.const_mul _) ?_
+  refine integral_mono f.integrable.norm (h_int.const_mul _) ?_
   intro x
   simp
   exact norm_le_sup_Iic_seminorm_mul_one_add_norm_pow_neg r f x
@@ -373,21 +373,38 @@ end Def
 
 noncomputable def toL1_CLM : 𝓢(E, F) →L[ℝ] Lp (α := E) F 1 := toL1_CLM' ℝ
 
-/- The integral of a Schwartz map as a continuous linear map. -/
-noncomputable def integralCLM' [CompleteSpace F] : 𝓢(E, F) →L[ℝ] F :=
-  ContinuousLinearMap.comp L1.integralCLM toL1_CLM
+end Continuous
+
 
 section Nontrivial
-variable (𝕜 : Type*) [NontriviallyNormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
+variable {𝕜 : Type*} [NontriviallyNormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+
+section Def
+variable (𝕜)
 /- The integral of a Schwartz map as a continuous linear map. -/
-noncomputable def integralCLM [CompleteSpace F] : 𝓢(E, F) →L[𝕜] F :=
+noncomputable def integralCLM' [CompleteSpace F] : 𝓢(E, F) →L[𝕜] F :=
   ContinuousLinearMap.comp (L1.integralCLM' 𝕜) (toL1_CLM' 𝕜)
+end Def
+
+lemma integralCLM'_apply [CompleteSpace F] {f : 𝓢(E, F)} :
+    integralCLM' 𝕜 f = ∫ x, f x := by
+  rw [MeasureTheory.integral_eq _ f.integrable]
+  rw [integralCLM', L1.integral_def]
+  rfl
 
 end Nontrivial
-end Continuous
+
+/- The integral of a Schwartz map as a continuous linear map. -/
+noncomputable def integralCLM [CompleteSpace F] : 𝓢(E, F) →L[ℝ] F := integralCLM' ℝ
+
+lemma integralCLM_apply [CompleteSpace F] {f : 𝓢(E, F)} : integralCLM f = ∫ x, f x := by
+  rw [integralCLM]
+  exact integralCLM'_apply
+
 end Integrable
-end SchwartzMap
+
+end SchwartzMap  -- namespace
 
 
 namespace TemperedDistribution
@@ -406,7 +423,7 @@ abbrev _root_.TemperedDistribution := 𝓢(E, F) →L[𝕜] F
 end Def
 
 noncomputable instance instOne : One (𝓢(E, F) →L[𝕜] F) where
-  one := SchwartzMap.integralCLM 𝕜
+  one := SchwartzMap.integralCLM' 𝕜
 
 noncomputable def const (c : 𝕜) : 𝓢(E, F) →L[𝕜] F := c • (1 : 𝓢(E, F) →L[𝕜] F)
 
@@ -421,4 +438,4 @@ noncomputable instance instNatCast : NatCast (𝓢(E, F) →L[𝕜] F) where
 noncomputable instance instIntCast : IntCast (𝓢(E, F) →L[𝕜] F) where
   intCast n := const (n : 𝕜)
 
-end TemperedDistribution
+end TemperedDistribution  -- namespace
