@@ -13,16 +13,6 @@ local macro_rules | `($x ^ $y) => `(HPow.hPow $x $y)
 open MeasureTheory SchwartzSpace
 open scoped BigOperators Real NNReal ENNReal
 
--- Plan is to define mapping from `L1` to `L1`,
--- then show continuous,
--- then transfer to `𝓢(E, F)` using `ContinuousLinearMap.comp`.
-
-namespace SchwartzMap
-
-variable {𝕜 E F : Type*}
-variable [NormedAddCommGroup E] [NormedSpace ℝ E]
-variable [NormedAddCommGroup F] [NormedSpace ℝ F]
-
 -- Want to define `φ ↦ ∫ x, f x • φ x` as a CLM `𝓢(E, F) →L[𝕜] F` where `f : Lp 𝕜 p`.
 -- Two options for how to do this...
 --
@@ -59,6 +49,25 @@ variable [NormedAddCommGroup F] [NormedSpace ℝ F]
 -- This would require `NormedSpace ℝ (Lp {E} 𝕜 p →L[𝕜] F)`.
 -- That is, linear functionals on `Lp` as a `NormedSpace`? What's missing? `SMul ℝ` etc.
 -- Although, if we *can* this, can we still obtain the *integral* of `f • φ` as a CLM?
+
+variable {𝕜 E F : Type*}
+variable [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable [NormedAddCommGroup F] [NormedSpace ℝ F]
+
+
+section Const  -- TODO: Move to a different file?
+
+lemma Function.hasTemperateGrowth_const {c : F} : Function.HasTemperateGrowth (fun (_ : E) => c) := by
+  refine ⟨contDiff_const, ?_⟩
+  intro n
+  cases n with
+  | zero => refine ⟨0, ‖c‖, ?_⟩; simp
+  | succ n => refine ⟨0, 0, ?_⟩; simp [iteratedFDeriv_const_of_ne, Nat.succ_ne_zero]
+
+end Const
+
+
+namespace SchwartzMap
 
 section HasTemperateGrowth
 
@@ -198,52 +207,48 @@ lemma hasTemperateGrowth_smul_CLM_apply
 end HasTemperateGrowth
 
 
-section Integral
+namespace Distribution
 
 variable [NontriviallyNormedField 𝕜]
 variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+
+variable [CompleteSpace F]
 variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
 
 section Def
 variable (𝕜)
-noncomputable def integral_hasTemperateGrowth_smul_CLM' [CompleteSpace F]
+noncomputable def ofHasTemperateGrowth'
     {g : E → ℝ} (hg : Function.HasTemperateGrowth g) : 𝓢(E, F) →L[𝕜] F :=
   ContinuousLinearMap.comp (integralCLM' 𝕜) (hasTemperateGrowth_smul_CLM 𝕜 hg)
 end Def
 
-lemma integral_hasTemperateGrowth_smul_CLM'_apply [CompleteSpace F]
+lemma ofHasTemperateGrowth'_apply
     {g : E → ℝ} (hg : Function.HasTemperateGrowth g) {φ : 𝓢(E, F)} :
-    integral_hasTemperateGrowth_smul_CLM' 𝕜 hg φ = ∫ (x : E), g x • φ x := by
-  rw [integral_hasTemperateGrowth_smul_CLM']
+    ofHasTemperateGrowth' 𝕜 hg φ = ∫ (x : E), g x • φ x := by
+  rw [ofHasTemperateGrowth']
   rw [ContinuousLinearMap.comp_apply]
   rw [integralCLM'_apply]
   rfl
 
-noncomputable def integral_hasTemperateGrowth_smul_CLM [CompleteSpace F]
+noncomputable def ofHasTemperateGrowth
     {g : E → ℝ} (hg : Function.HasTemperateGrowth g) : 𝓢(E, F) →L[ℝ] F :=
-  integral_hasTemperateGrowth_smul_CLM' ℝ hg
+  ofHasTemperateGrowth' ℝ hg
 
-lemma integral_hasTemperateGrowth_smul_CLM_apply [CompleteSpace F]
+lemma ofHasTemperateGrowth_apply
     {g : E → ℝ} (hg : Function.HasTemperateGrowth g) {φ : 𝓢(E, F)} :
-    integral_hasTemperateGrowth_smul_CLM hg φ = ∫ (x : E), g x • φ x := by
-  rw [integral_hasTemperateGrowth_smul_CLM]
-  exact integral_hasTemperateGrowth_smul_CLM'_apply hg
+    ofHasTemperateGrowth hg φ = ∫ (x : E), g x • φ x := by
+  rw [ofHasTemperateGrowth]
+  exact ofHasTemperateGrowth'_apply hg
 
-end Integral
+-- TODO: Would this be better defined with a subtype?
+lemma ofHasTemperateGrowth_const {c : ℝ} :
+    ofHasTemperateGrowth
+      (Function.hasTemperateGrowth_const :
+        Function.HasTemperateGrowth (fun (_ : E) => c)) =
+    SchwartzMap.Distribution.const E F c := by
+  ext φ
+  rw [ofHasTemperateGrowth_apply, const_apply]
+  rw [integral_smul]
 
-end SchwartzMap
-
-
-section Const
-
-variable [NormedAddCommGroup E] [NormedSpace ℝ E]
-variable [NormedAddCommGroup F] [NormedSpace ℝ F]
-
-lemma Function.hasTemperateGrowth_const {c : F} : Function.HasTemperateGrowth (fun (_ : E) => c) := by
-  refine ⟨contDiff_const, ?_⟩
-  intro n
-  cases n with
-  | zero => refine ⟨0, ‖c‖, ?_⟩; simp
-  | succ n => refine ⟨0, 0, ?_⟩; simp [iteratedFDeriv_const_of_ne, Nat.succ_ne_zero]
-
-end Const
+end Distribution  -- namespace
+end SchwartzMap  -- namespace

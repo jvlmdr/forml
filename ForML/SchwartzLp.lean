@@ -40,6 +40,22 @@ lemma ENNReal_rpow_lt_top {a : ENNReal} {p : ℝ} (hp : 0 < p) (h : a < ⊤) : a
   exact ENNReal_rpow_ne_top hp h
 
 
+-- Define some handy `simp` lemmas for `1 + ‖x‖`.
+section OneAddNorm
+variable {α : Type*} [SeminormedAddGroup α]
+
+@[simp] lemma one_add_norm_pos (x : α) : 0 < 1 + ‖x‖ :=
+  add_pos_of_pos_of_nonneg zero_lt_one (norm_nonneg _)
+
+@[simp] lemma one_add_norm_nonneg (x : α) : 0 ≤ 1 + ‖x‖ :=
+  le_of_lt (one_add_norm_pos x)
+
+@[simp] lemma one_add_norm_ne_zero (x : α) : 1 + ‖x‖ ≠ 0 :=
+  ne_of_gt (one_add_norm_pos x)
+
+end OneAddNorm
+
+
 namespace SchwartzMap
 
 variable {E F : Type*}
@@ -161,32 +177,6 @@ lemma norm_le_inv_one_add_norm (f : 𝓢(E, F)) :
   simpa
 
 
--- Define some handy `simp` lemmas for `1 + ‖x‖`.
-section OneAddNorm
-variable {α : Type*} [SeminormedAddGroup α]
-
-@[simp] lemma one_add_norm_pos (x : α) : 0 < 1 + ‖x‖ :=
-  add_pos_of_pos_of_nonneg zero_lt_one (norm_nonneg _)
-
-@[simp] lemma one_add_norm_nonneg (x : α) : 0 ≤ 1 + ‖x‖ :=
-  le_of_lt (one_add_norm_pos x)
-
-@[simp] lemma one_add_norm_ne_zero (x : α) : 1 + ‖x‖ ≠ 0 :=
-  ne_of_gt (one_add_norm_pos x)
-
-end OneAddNorm
-
-
--- section Measurable
--- variable [MeasurableSpace E] [OpensMeasurableSpace E] [SecondCountableTopologyEither E F]
-
--- lemma aestronglyMeasurable (f : 𝓢(E, F)) (μ : Measure E := by volume_tac) :
---     AEStronglyMeasurable f μ := by
---   exact f.continuous.aestronglyMeasurable
-
--- end Measurable
-
-
 section Integrable
 
 variable [mE : MeasureSpace E]
@@ -282,9 +272,9 @@ lemma integrable (f : 𝓢(E, F)) : Integrable f := by
   exact memℒp f 1
 
 
-section Continuous
+section ToL1
 
-variable {𝕜 : Type*} [NormedField 𝕜] -- [NontriviallyNormedField 𝕜]
+variable {𝕜 : Type*} [NormedField 𝕜] -- Don't need `NontriviallyNormedField 𝕜`.
 variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
 -- Write a short version of the supremem of the seminorm over `Finset.Iic (k, n)`.
@@ -373,69 +363,73 @@ end Def
 
 noncomputable def toL1_CLM : 𝓢(E, F) →L[ℝ] Lp (α := E) F 1 := toL1_CLM' ℝ
 
-end Continuous
+end ToL1
 
 
-section Nontrivial
+section Integral
 
-variable {𝕜 : Type*} [NontriviallyNormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
+variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+variable [CompleteSpace F]
 
 section Def
 variable (𝕜)
 /- The integral of a Schwartz map as a continuous linear map. -/
-noncomputable def integralCLM' [CompleteSpace F] : 𝓢(E, F) →L[𝕜] F :=
+noncomputable def integralCLM' : 𝓢(E, F) →L[𝕜] F :=
   ContinuousLinearMap.comp (L1.integralCLM' 𝕜) (toL1_CLM' 𝕜)
 end Def
 
-lemma integralCLM'_apply [CompleteSpace F] {f : 𝓢(E, F)} :
+lemma integralCLM'_apply {f : 𝓢(E, F)} :
     integralCLM' 𝕜 f = ∫ x, f x := by
   rw [MeasureTheory.integral_eq _ f.integrable]
   rw [integralCLM', L1.integral_def]
   rfl
 
-end Nontrivial
-
 /- The integral of a Schwartz map as a continuous linear map. -/
-noncomputable def integralCLM [CompleteSpace F] : 𝓢(E, F) →L[ℝ] F := integralCLM' ℝ
+noncomputable def integralCLM : 𝓢(E, F) →L[ℝ] F := integralCLM' ℝ
 
-lemma integralCLM_apply [CompleteSpace F] {f : 𝓢(E, F)} : integralCLM f = ∫ x, f x := by
+lemma integralCLM_apply {f : 𝓢(E, F)} : integralCLM f = ∫ x, f x := by
   rw [integralCLM]
   exact integralCLM'_apply
 
-end Integrable
 
-end SchwartzMap  -- namespace
-
-
-namespace TemperedDistribution
-
-variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
-variable {E F : Type*}
-variable [NormedAddCommGroup E] [NormedSpace ℝ E]
-variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
-variable [NormedAddCommGroup F] [NormedSpace ℝ F] [CompleteSpace F]
-variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
-
-section Def
-variable (𝕜)
 -- TODO: Is this useful or will it get in the way? Should 𝕜 not be included?
-abbrev _root_.TemperedDistribution := 𝓢(E, F) →L[𝕜] F
-end Def
+-- section Def
+-- variable (𝕜)
+-- abbrev Distribution := 𝓢(E, F) →L[𝕜] F
+-- end Def
+
+namespace Distribution
 
 noncomputable instance instOne : One (𝓢(E, F) →L[𝕜] F) where
   one := SchwartzMap.integralCLM' 𝕜
 
+lemma one_apply {φ : 𝓢(E, F)} : (1 : 𝓢(E, F) →L[𝕜] F) φ = ∫ x, φ x := by
+  change (One.one : 𝓢(E, F) →L[𝕜] F) φ = _
+  simp [One.one]
+  rw [integralCLM'_apply]
+
+section Def
+variable (E F)
 noncomputable def const (c : 𝕜) : 𝓢(E, F) →L[𝕜] F := c • (1 : 𝓢(E, F) →L[𝕜] F)
+end Def
 
-lemma const_zero : const (0 : 𝕜) = (0 : 𝓢(E, F) →L[𝕜] F) := by simp [const]
-lemma const_one : const (1 : 𝕜) = (1 : 𝓢(E, F) →L[𝕜] F) := by simp [const]
-lemma const_neg_one : const (-1 : 𝕜) = (-1 : 𝓢(E, F) →L[𝕜] F) := by simp [const]
+lemma const_apply {c : 𝕜} {φ : 𝓢(E, F)} : const E F c φ = c • ∫ x, φ x := by
+  simp [const, one_apply]
 
--- TODO: Should we use `(n : ℝ)` with an alternative definition of `const` here?
+-- lemma const_zero : const E F (0 : 𝕜) = 0 := by simp [const]
+-- lemma const_one : const E F (1 : 𝕜) = 1 := by simp [const]
+-- lemma const_neg_one : const E F (-1 : 𝕜) = -1 := by simp [const]
+
 noncomputable instance instNatCast : NatCast (𝓢(E, F) →L[𝕜] F) where
-  natCast n := const (n : 𝕜)
+  natCast n := const E F (n : 𝕜)
 
 noncomputable instance instIntCast : IntCast (𝓢(E, F) →L[𝕜] F) where
-  intCast n := const (n : 𝕜)
+  intCast n := const E F (n : 𝕜)
 
-end TemperedDistribution  -- namespace
+end Distribution  -- namespace
+
+end Integral
+end Integrable
+
+end SchwartzMap  -- namespace
