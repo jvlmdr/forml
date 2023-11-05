@@ -1,4 +1,5 @@
 import Mathlib.Analysis.Distribution.SchwartzSpace
+import Mathlib.Analysis.Fourier.FourierTransform
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
 
@@ -8,7 +9,7 @@ section Differentiable
 
 variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
 variable {𝕜' : Type*} [NontriviallyNormedField 𝕜'] [NormedAlgebra 𝕜 𝕜'] [NormedSpace 𝕜' ℂ]
-variable (E : Type*) [NormedAddCommGroup E] [NormedSpace 𝕜 E]
+variable {E : Type*} [NormedAddCommGroup E] [NormedSpace 𝕜 E]
 -- `NormedAlgebra` instead of `NormedSpace` for `Complex.differentiable_exp`
 variable [NormedAlgebra 𝕜 ℂ] [IsScalarTower 𝕜 𝕜' ℂ]
 
@@ -16,7 +17,11 @@ lemma Differentiable.cexp_smul_I {f : E → 𝕜'} (hf : Differentiable 𝕜 f) 
     Differentiable 𝕜 fun x => Complex.exp (f x • (I : ℂ)) :=
   Complex.differentiable_exp.comp (hf.smul_const I)
 
+lemma Complex.differentiable_exp_real_smul_I : Differentiable ℝ (fun x : ℝ => exp (x • I)) :=
+  Differentiable.cexp_smul_I differentiable_id
+
 end Differentiable
+
 
 section IteratedDeriv
 -- Some useful lemmata for `iteratedDeriv` that avoid passing through `iteratedFDeriv`.
@@ -51,15 +56,15 @@ namespace Complex
 
 variable {𝕜 : Type*} [NontriviallyNormedField 𝕜] [NormedAlgebra 𝕜 ℝ]
 
-lemma contDiff_exp_smul_real_I {n : ℕ∞} : ContDiff ℝ n fun (x : ℝ) => exp (x • I) :=
+lemma contDiff_exp_real_smul_I {n : ℕ∞} : ContDiff ℝ n fun x : ℝ => exp (x • I) :=
   ContDiff.cexp (ContDiff.smul contDiff_id contDiff_const)
 
-lemma _root_.ContDiff.cexp_smul_real_const_mul_I {n : ℕ∞} {f : ℝ → ℝ} (hf : ContDiff ℝ n f) :
-    ContDiff ℝ n fun (x : ℝ) => Complex.exp (f x • I) :=
-  contDiff_exp_smul_real_I.comp hf
+lemma _root_.ContDiff.cexp_const_mul_real_smul_I {n : ℕ∞} {f : ℝ → ℝ} (hf : ContDiff ℝ n f) :
+    ContDiff ℝ n fun x : ℝ => Complex.exp (f x • I) :=
+  contDiff_exp_real_smul_I.comp hf
 
-lemma deriv_exp_smul_real_I_apply {x : ℝ} :
-    deriv (fun (x : ℝ) => exp (x • I)) x = I * exp (x • I) := by
+lemma deriv_exp_real_smul_I_apply {x : ℝ} :
+    deriv (fun x : ℝ => exp (x • I)) x = I * exp (x • I) := by
   change deriv (exp ∘ fun x => (x • I)) x = I * cexp (x • I)
   rw [deriv.comp _ differentiableAt_exp (differentiableAt_id.smul_const I)]
   rw [Complex.deriv_exp]
@@ -68,15 +73,15 @@ lemma deriv_exp_smul_real_I_apply {x : ℝ} :
   rw [deriv_smul_const differentiableAt_id]
   simp
 
-lemma iteratedDeriv_exp_smul_real_I_apply {n : ℕ} {x : ℝ} :
-    iteratedDeriv n (fun (x : ℝ) => exp (x • I)) x = HPow.hPow I n * exp (x • I) := by
+lemma iteratedDeriv_exp_real_smul_I_apply {n : ℕ} {x : ℝ} :
+    iteratedDeriv n (fun x : ℝ => exp (x • I)) x = HPow.hPow I n * exp (x • I) := by
   induction n with
   | zero => simp
   | succ n hi =>
     rw [iteratedDeriv_succ', pow_succ]
     conv => lhs; arg 2; intro x
-    simp only [deriv_exp_smul_real_I_apply]
-    rw [iteratedDeriv_const_mul_apply I contDiff_exp_smul_real_I]
+    simp only [deriv_exp_real_smul_I_apply]
+    rw [iteratedDeriv_const_mul_apply I contDiff_exp_real_smul_I]
     rw [hi, mul_assoc]
 
 lemma deriv_comp_exp_real_smul_I_apply {f : 𝕜 → ℝ} (hf : Differentiable 𝕜 f) {x : 𝕜} :
@@ -86,15 +91,15 @@ lemma deriv_comp_exp_real_smul_I_apply {f : 𝕜 → ℝ} (hf : Differentiable �
   rw [deriv_smul_const hf.differentiableAt]
   simp
 
--- Prove some convenience lemmata for `fun (x : ℝ) => exp ((a * x) • I)`.
+-- Prove some convenience lemmata for `fun x : ℝ => exp ((a * x) • I)`.
 
-lemma contDiff_exp_smul_real_const_mul_I {n : ℕ∞} {a : ℝ} :
-    ContDiff ℝ n fun (x : ℝ) => exp ((a * x) • I) :=
-  ContDiff.cexp_smul_real_const_mul_I (contDiff_const.mul contDiff_id)
+lemma contDiff_exp_const_mul_real_smul_I {n : ℕ∞} {a : ℝ} :
+    ContDiff ℝ n fun x : ℝ => exp ((a * x) • I) :=
+  ContDiff.cexp_const_mul_real_smul_I (contDiff_const.mul contDiff_id)
 
 -- TODO: Use comp with CLM?
-lemma deriv_exp_smul_real_const_mul_I_apply {a : ℝ} {x : ℝ} :
-    deriv (fun (x : ℝ) => exp ((a * x) • I)) x = (a • I) * exp ((a * x) • I) := by
+lemma deriv_exp_const_mul_real_smul_I_apply {a : ℝ} {x : ℝ} :
+    deriv (fun x : ℝ => exp ((a * x) • I)) x = (a • I) * exp ((a * x) • I) := by
   rw [deriv_comp_exp_real_smul_I_apply]
   swap
   . exact differentiable_id.const_mul a
@@ -104,38 +109,38 @@ lemma deriv_exp_smul_real_const_mul_I_apply {a : ℝ} {x : ℝ} :
   simp
 
 -- TODO: Use comp with CLM?
-lemma iteratedDeriv_exp_smul_real_const_mul_I_apply {n : ℕ} {a : ℝ} {x : ℝ} :
-    iteratedDeriv n (fun (x : ℝ) => exp ((a * x) • I)) x = HPow.hPow (a • I) n * exp ((a * x) • I) := by
+lemma iteratedDeriv_exp_const_mul_real_smul_I_apply {n : ℕ} {a : ℝ} {x : ℝ} :
+    iteratedDeriv n (fun x : ℝ => exp ((a * x) • I)) x = HPow.hPow (a • I) n * exp ((a * x) • I) := by
   induction n with
   | zero => simp
   | succ n hi =>
     rw [iteratedDeriv_succ', pow_succ]
     conv => lhs; arg 2; intro x
-    simp only [deriv_exp_smul_real_const_mul_I_apply]
-    rw [iteratedDeriv_const_mul_apply _ contDiff_exp_smul_real_const_mul_I]
+    simp only [deriv_exp_const_mul_real_smul_I_apply]
+    rw [iteratedDeriv_const_mul_apply _ contDiff_exp_const_mul_real_smul_I]
     rw [hi, mul_assoc]
 
-lemma hasTemperateGrowth_exp_smul_real_I :
-    Function.HasTemperateGrowth fun (x : ℝ) => exp (x • I) := by
-  refine ⟨contDiff_exp_smul_real_I, ?_⟩
+lemma hasTemperateGrowth_exp_real_smul_I :
+    Function.HasTemperateGrowth fun x : ℝ => exp (x • I) := by
+  refine ⟨contDiff_exp_real_smul_I, ?_⟩
   intro n
   refine ⟨n, 1, ?_⟩
   intro x
   rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv]
-  rw [iteratedDeriv_exp_smul_real_I_apply]
+  rw [iteratedDeriv_exp_real_smul_I_apply]
   simp
   exact one_le_pow_of_one_le (by simp) n
 
 -- TODO: Generalize to `f x` with bound on growth?
 -- Could there be a `HasTemperateGrowth.comp`? At least with a `ContinuousLinearMap`?
-lemma hasTemperateGrowth_exp_smul_real_const_mul_I {a : ℝ} :
-    Function.HasTemperateGrowth fun (x : ℝ) => exp ((a * x) • I) := by
-  refine ⟨contDiff_exp_smul_real_const_mul_I, ?_⟩
+lemma hasTemperateGrowth_exp_const_mul_real_smul_I {a : ℝ} :
+    Function.HasTemperateGrowth fun x : ℝ => exp ((a * x) • I) := by
+  refine ⟨contDiff_exp_const_mul_real_smul_I, ?_⟩
   intro n
   refine ⟨n, HPow.hPow |a| n, ?_⟩
   intro x
   rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv]
-  rw [iteratedDeriv_exp_smul_real_const_mul_I_apply]
+  rw [iteratedDeriv_exp_const_mul_real_smul_I_apply]
   simp [abs_of_pos, Real.pi_pos]
   norm_cast
   rw [abs_exp_ofReal_mul_I]
@@ -207,5 +212,11 @@ lemma hasTemperateGrowth_cos : Function.HasTemperateGrowth cos := by
   simp
   rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv]
   exact le_trans abs_iteratedDeriv_cos_le (le_add_of_nonneg_right (abs_nonneg x))
+
+lemma hasTemperateGrowth_fourierChar :
+    Function.HasTemperateGrowth fun x : ℝ => (Real.fourierChar (Multiplicative.ofAdd x) : ℂ) := by
+  simp_rw [Real.fourierChar_apply]
+  simp_rw [← Complex.real_smul]
+  exact Complex.hasTemperateGrowth_exp_const_mul_real_smul_I
 
 end Real
