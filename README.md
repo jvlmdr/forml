@@ -10,6 +10,18 @@ This project aims to prove useful theorems for machine learning in Lean.
 
 * Gaussian tends to Dirac delta
 * Second mean value theorem for (improper) integrals
+* Schwartz functions
+  * Integral of a Schwartz function as a `ContinuousLinearMap`
+  * Integral against real-valued function that `HasTemperateGrowth` is a tempered distribution
+  * `HasTemperateGrowth` for trigonometric functions
+  * Application of a CLM commutes with (iterated) Fréchet derivative
+  * Iterated partial derivative is equal to iterated Fréchet derivative
+
+## Todo
+
+* Fourier transform of Schwartz function
+* Fourier transform of tempered distribution
+* Schwartz function: Integral up to a point as a CLM
 
 ## Roadmap (depth first)
 
