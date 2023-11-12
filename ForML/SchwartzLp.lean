@@ -261,6 +261,7 @@ lemma norm_toL1_eq_integral (f : 𝓢(E, F)) : ‖toL1 f‖ = ∫ x, ‖f x‖ :
   rw [integral_norm_eq_lintegral_nnnorm f.continuous.aestronglyMeasurable]
 
 -- TODO: Would it be useful to have this? Or no point?
+-- TODO: Could use `NormedAddGroupHom` instead? Or would that mess up the SchwartzMap topology?
 -- lemma addHomL1 : 𝓢(E, F) →+ Lp F 1 mE.volume where
 --   toFun := toLp 1
 --   map_zero' := by rfl
@@ -368,9 +369,11 @@ end ToL1
 
 section Integral
 
-variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
-variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+variable {𝕜 𝕜' : Type*}
+-- Provide variants of integral maps that are `𝕜`-linear.
+variable [NontriviallyNormedField 𝕜]
 variable [CompleteSpace F]
+variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
 section Def
 variable (𝕜)
@@ -393,39 +396,34 @@ lemma integralCLM_apply {f : 𝓢(E, F)} : integralCLM f = ∫ x, f x := by
   exact integralCLM'_apply
 
 
--- TODO: Is this useful or will it get in the way? Should 𝕜 not be included?
--- section Def
--- variable (𝕜)
--- abbrev Distribution := 𝓢(E, F) →L[𝕜] F
--- end Def
-
 namespace Distribution
 
-noncomputable instance instOne : One (𝓢(E, F) →L[𝕜] F) where
-  one := SchwartzMap.integralCLM' 𝕜
+-- For distributions, only consider `ℝ`-linearity.
+-- Provide scalar multiplication with `𝕜'`.
+variable [NormedField 𝕜'] [NormedSpace ℝ 𝕜']
+variable [NormedSpace 𝕜' F] [SMulCommClass ℝ 𝕜' F] [IsScalarTower ℝ 𝕜' F]
 
-lemma one_apply {φ : 𝓢(E, F)} : (1 : 𝓢(E, F) →L[𝕜] F) φ = ∫ x, φ x := by
-  change (One.one : 𝓢(E, F) →L[𝕜] F) φ = _
+noncomputable instance instOne : One (𝓢(E, F) →L[ℝ] F) where
+  one := SchwartzMap.integralCLM
+
+lemma one_apply {φ : 𝓢(E, F)} : (1 : 𝓢(E, F) →L[ℝ] F) φ = ∫ x, φ x := by
+  change (One.one : 𝓢(E, F) →L[ℝ] F) φ = _
   simp [One.one]
-  rw [integralCLM'_apply]
+  rw [integralCLM_apply]
 
 section Def
 variable (E F)
-noncomputable def const (c : 𝕜) : 𝓢(E, F) →L[𝕜] F := c • (1 : 𝓢(E, F) →L[𝕜] F)
+noncomputable def const (c : 𝕜') : 𝓢(E, F) →L[ℝ] F := c • (1 : 𝓢(E, F) →L[ℝ] F)
 end Def
 
-lemma const_apply {c : 𝕜} {φ : 𝓢(E, F)} : const E F c φ = c • ∫ x, φ x := by
+lemma const_apply {c : 𝕜'} {φ : 𝓢(E, F)} : const E F c φ = c • ∫ x, φ x := by
   simp [const, one_apply]
 
--- lemma const_zero : const E F (0 : 𝕜) = 0 := by simp [const]
--- lemma const_one : const E F (1 : 𝕜) = 1 := by simp [const]
--- lemma const_neg_one : const E F (-1 : 𝕜) = -1 := by simp [const]
+noncomputable instance instNatCast : NatCast (𝓢(E, F) →L[ℝ] F) where
+  natCast n := const E F (n : ℝ)
 
-noncomputable instance instNatCast : NatCast (𝓢(E, F) →L[𝕜] F) where
-  natCast n := const E F (n : 𝕜)
-
-noncomputable instance instIntCast : IntCast (𝓢(E, F) →L[𝕜] F) where
-  intCast n := const E F (n : 𝕜)
+noncomputable instance instIntCast : IntCast (𝓢(E, F) →L[ℝ] F) where
+  intCast n := const E F (n : ℝ)
 
 end Distribution  -- namespace
 

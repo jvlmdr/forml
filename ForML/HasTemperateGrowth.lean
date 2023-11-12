@@ -5,6 +5,35 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
 
 open scoped Real Complex
 
+
+section Util
+
+variable {E F : Type*}
+variable [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable [NormedAddCommGroup F] [NormedSpace ℝ F]
+
+lemma Function.HasTemperateGrowth.differentiable {g : E → F} (hg : Function.HasTemperateGrowth g) :
+    Differentiable ℝ g :=  hg.1.differentiable le_top
+
+end Util
+
+
+section Const
+
+variable {E F : Type*}
+variable [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable [NormedAddCommGroup F] [NormedSpace ℝ F]
+
+lemma Function.hasTemperateGrowth_const {c : F} : Function.HasTemperateGrowth (fun (_ : E) => c) := by
+  refine ⟨contDiff_const, ?_⟩
+  intro n
+  cases n with
+  | zero => refine ⟨0, ‖c‖, ?_⟩; simp
+  | succ n => refine ⟨0, 0, ?_⟩; simp [iteratedFDeriv_const_of_ne, Nat.succ_ne_zero]
+
+end Const
+
+
 section Differentiable
 
 variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
@@ -213,10 +242,18 @@ lemma hasTemperateGrowth_cos : Function.HasTemperateGrowth cos := by
   rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv]
   exact le_trans abs_iteratedDeriv_cos_le (le_add_of_nonneg_right (abs_nonneg x))
 
-lemma hasTemperateGrowth_fourierChar :
-    Function.HasTemperateGrowth fun x : ℝ => (Real.fourierChar (Multiplicative.ofAdd x) : ℂ) := by
-  simp_rw [Real.fourierChar_apply]
+lemma hasTemperateGrowth_realFourierChar' {w : ℝ} :
+    Function.HasTemperateGrowth fun v : ℝ => Complex.exp (↑(-(2 * π * v * w)) * Complex.I) := by
   simp_rw [← Complex.real_smul]
+  simp_rw [mul_assoc _ _ w, mul_comm _ w, ← mul_assoc _ w]
+  simp_rw [← neg_mul]
   exact Complex.hasTemperateGrowth_exp_const_mul_real_smul_I
+
+lemma hasTemperateGrowth_realFourierChar {w : ℝ} :
+    Function.HasTemperateGrowth fun v : ℝ => (Real.fourierChar (Multiplicative.ofAdd (-(v * w))) : ℂ) := by
+  simp_rw [Real.fourierChar_apply]
+  simp_rw [mul_neg]
+  simp_rw [← mul_assoc]
+  exact hasTemperateGrowth_realFourierChar'
 
 end Real
