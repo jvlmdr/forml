@@ -8,7 +8,7 @@ import ForML.Util
 -- https://github.com/leanprover/lean4/issues/2220
 local macro_rules | `($x ^ $y) => `(HPow.hPow $x $y)
 
-open scoped Real Complex SchwartzSpace BigOperators
+open scoped Real Complex SchwartzSpace BigOperators FourierTransform
 
 section Basic
 
@@ -97,18 +97,25 @@ end Basic
 
 section Differentiable
 
-variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
-variable {𝕜' : Type*} [NontriviallyNormedField 𝕜'] [NormedAlgebra 𝕜 𝕜'] [NormedSpace 𝕜' ℂ]
-variable {E : Type*} [NormedAddCommGroup E] [NormedSpace 𝕜 E]
--- `NormedAlgebra` instead of `NormedSpace` for `Complex.differentiable_exp`
-variable [NormedAlgebra 𝕜 ℂ] [IsScalarTower 𝕜 𝕜' ℂ]
-
-lemma Differentiable.cexp_smul_I {f : E → 𝕜'} (hf : Differentiable 𝕜 f) :
-    Differentiable 𝕜 fun x => Complex.exp (f x • (I : ℂ)) :=
-  Complex.differentiable_exp.comp (hf.smul_const I)
+variable {E : Type*}
+variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 
 lemma Complex.differentiable_exp_real_smul_I : Differentiable ℝ (fun x : ℝ => exp (x • I)) :=
-  Differentiable.cexp_smul_I differentiable_id
+  (differentiable_id.smul_const I).cexp
+
+lemma Differentiable.cexp_real_smul_I {f : E → ℝ} (hf : Differentiable ℝ f) :
+    Differentiable ℝ fun x => cexp (f x • Complex.I) :=
+  comp (F := ℝ) Complex.differentiable_exp_real_smul_I hf
+
+lemma Real.differentiable_fourierChar : Differentiable ℝ (fun x : ℝ => Real.fourierChar[x]) := by
+  simp [Real.fourierChar_apply]
+  norm_cast
+  simp_rw [← Complex.real_smul]
+  exact Differentiable.cexp_real_smul_I (differentiable_id.const_mul (2 * π))
+
+lemma Differentiable.realFourierChar {f : E → ℝ} (hf : Differentiable ℝ f) :
+    Differentiable ℝ (fun x => Real.fourierChar[f x]) :=
+  comp (F := ℝ) Real.differentiable_fourierChar hf
 
 end Differentiable
 
