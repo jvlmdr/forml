@@ -16,6 +16,7 @@ variable {E F G : Type*}
 variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 variable [NormedAddCommGroup F] [NormedSpace ℝ F]
 
+-- Convenience lemma.
 lemma Function.HasTemperateGrowth.differentiable {g : E → F} (hg : Function.HasTemperateGrowth g) :
     Differentiable ℝ g :=  hg.1.differentiable le_top
 
@@ -37,10 +38,11 @@ lemma SchwartzMap.hasTemperateGrowth (f : 𝓢(E, F)) : Function.HasTemperateGro
   refine ⟨0, C, ?_⟩
   simpa
 
--- Require `Nontrivial` for `ContinuousLinearMap.norm_id`.
 section Explicit
+
 variable (E)
-lemma Function.hasTemperateGrowth_id [Nontrivial E] : Function.HasTemperateGrowth (id : E → E) := by
+
+lemma Function.hasTemperateGrowth_id : Function.HasTemperateGrowth (id : E → E) := by
   refine ⟨contDiff_id, ?_⟩
   intro n
   refine ⟨1, 1, ?_⟩
@@ -49,11 +51,15 @@ lemma Function.hasTemperateGrowth_id [Nontrivial E] : Function.HasTemperateGrowt
   cases n with
   | zero => simp
   | succ n =>
-    cases n <;> simp [iteratedFDeriv_succ_eq_comp_right]
+    rw [iteratedFDeriv_succ_eq_comp_right]
+    cases n with
+    | zero => simp; exact le_trans ContinuousLinearMap.norm_id_le (by simp)
+    | succ n => simp [iteratedFDeriv_succ_eq_comp_right]
+
 end Explicit
 
 /-- Any `ContinuousLinearMap` is a `HasTemperateGrowth` function. -/
-lemma Function.HasTemperateGrowth.clm [Nontrivial E] {a : E →L[ℝ] F} : Function.HasTemperateGrowth fun x => a x := by
+lemma Function.HasTemperateGrowth.clm {a : E →L[ℝ] F} : Function.HasTemperateGrowth fun x => a x := by
   constructor
   . exact ContDiff.clm_apply contDiff_const contDiff_id
   . intro n
@@ -71,39 +77,20 @@ lemma Function.HasTemperateGrowth.clm [Nontrivial E] {a : E →L[ℝ] F} : Funct
     simp
     refine mul_le_mul_of_nonneg_left ?_ (norm_nonneg _)
     -- TODO: Could re-use result of `hasTemperateGrowth_id`?
+    -- Or implement that lemma using this one?
     cases n with
     | zero => simp
     | succ n =>
-      simp [iteratedFDeriv_succ_eq_comp_right]
+      rw [iteratedFDeriv_succ_eq_comp_right]
       cases n with
-      | zero => simp
-      | succ n =>
-        rw [iteratedFDeriv_const_of_ne] <;> simp
+      | zero => simp; refine le_trans ContinuousLinearMap.norm_id_le (by simp)
+      | succ n => simp; rw [iteratedFDeriv_const_of_ne] <;> simp
+
+example {a : ℝ} : a * x = ContinuousLinearMap.mul ℝ ℝ a x := rfl
 
 lemma Real.hasTemperateGrowth_mul_left {a : ℝ} : Function.HasTemperateGrowth fun x : ℝ => a * x := by
-  constructor
-  . refine ContDiff.mul contDiff_const contDiff_id
-  . intro n
-    refine ⟨1, |a|, ?_⟩
-    intro x
-    simp
-    cases n with
-    | zero => simp [mul_add]
-    | succ n =>
-      simp [iteratedFDeriv_succ_eq_comp_right]
-      simp_rw [fderiv_const_mul differentiableAt_id']
-      simp
-      cases n with
-      | zero =>
-        simp
-        refine le_trans (norm_smul_le _ _) ?_
-        simp [mul_add]
-        refine mul_nonneg (by simp) (by simp)
-      | succ n =>
-        rw [iteratedFDeriv_const_of_ne (by simp)]
-        simp
-        refine mul_nonneg (by simp) ?_
-        exact add_nonneg (by simp) (by simp)
+  change Function.HasTemperateGrowth fun x : ℝ => ContinuousLinearMap.mul ℝ ℝ a x
+  exact Function.HasTemperateGrowth.clm
 
 end Basic
 
@@ -126,6 +113,7 @@ lemma Complex.differentiable_exp_real_smul_I : Differentiable ℝ (fun x : ℝ =
 end Differentiable
 
 
+-- TODO: Check if these are unnecessary.
 section IteratedDeriv
 -- Some useful lemmata for `iteratedDeriv` that avoid passing through `iteratedFDeriv`.
 -- TODO: Typeclasses might not be perfect; some trial and error involved.
@@ -285,13 +273,11 @@ theorem Function.HasTemperateGrowth.comp
   ring_nf
 
 
-lemma Function.HasTemperateGrowth.comp_clm [Nontrivial E]
-    {g : F → G} (hg : HasTemperateGrowth g) (f : E →L[ℝ] F) :
+lemma Function.HasTemperateGrowth.comp_clm {g : F → G} (hg : HasTemperateGrowth g) (f : E →L[ℝ] F) :
     Function.HasTemperateGrowth fun x => g (f x) :=
   comp hg clm
 
-lemma Function.HasTemperateGrowth.clm_comp [Nontrivial F]
-    (g : F →L[ℝ] G) {f : E → F} (hf : HasTemperateGrowth f) :
+lemma Function.HasTemperateGrowth.clm_comp (g : F →L[ℝ] G) {f : E → F} (hf : HasTemperateGrowth f) :
     Function.HasTemperateGrowth fun x => g (f x) :=
   comp clm hf
 
@@ -342,35 +328,7 @@ lemma deriv_comp_exp_real_smul_I_apply {f : 𝕜 → ℝ} (hf : Differentiable �
   rw [deriv_smul_const hf.differentiableAt]
   simp
 
--- Prove some convenience lemmata for `fun x : ℝ => exp ((a * x) • I)`.
-
-lemma contDiff_exp_const_mul_real_smul_I {n : ℕ∞} {a : ℝ} :
-    ContDiff ℝ n fun x : ℝ => exp ((a * x) • I) :=
-  ContDiff.cexp_real_smul_I (contDiff_const.mul contDiff_id)
-
--- TODO: Use comp with CLM?
-lemma deriv_exp_const_mul_real_smul_I_apply {a : ℝ} {x : ℝ} :
-    deriv (fun x : ℝ => exp ((a * x) • I)) x = (a • I) * exp ((a * x) • I) := by
-  rw [deriv_comp_exp_real_smul_I_apply]
-  swap
-  . exact differentiable_id.const_mul a
-  rw [mul_comm]
-  congr
-  rw [deriv_const_mul _ differentiableAt_id]
-  simp
-
--- TODO: Use comp with CLM?
-lemma iteratedDeriv_exp_const_mul_real_smul_I_apply {n : ℕ} {a : ℝ} {x : ℝ} :
-    iteratedDeriv n (fun x : ℝ => exp ((a * x) • I)) x = HPow.hPow (a • I) n * exp ((a * x) • I) := by
-  induction n with
-  | zero => simp
-  | succ n hi =>
-    rw [iteratedDeriv_succ', pow_succ]
-    conv => lhs; arg 2; intro x
-    simp only [deriv_exp_const_mul_real_smul_I_apply]
-    rw [iteratedDeriv_const_mul_apply _ contDiff_exp_const_mul_real_smul_I]
-    rw [hi, mul_assoc]
-
+-- TODO: Remove? No longer needed.
 -- TODO: Would it make sense to provide this for `𝕜`-linearity?
 /-- Analogy of `fderiv_exp` for complex exponential. -/
 lemma _root_.fderiv_cexp_real {f : E → ℂ} {x : E} (hf : DifferentiableAt ℝ f x) :
@@ -380,135 +338,31 @@ lemma _root_.fderiv_cexp_real {f : E → ℂ} {x : E} (hf : DifferentiableAt ℝ
   rw [(hasStrictFDerivAt_exp_real (f x)).hasFDerivAt.fderiv]
   simp [ContinuousLinearMap.one_def]
 
-
--- How to write smul as application of a CLM.
-example {a : ℝ} : a • I = a • (ContinuousLinearMap.id ℝ ℂ) I := rfl
-
--- TODO: Proof is long but should be trivial?
--- TODO: Should this hold with equality?
-lemma _root_.norm_iteratedFDeriv_smul_I_le {n : ℕ} {f : E → ℝ} (hf : ContDiff ℝ ⊤ f) {x : E} :
-    ‖iteratedFDeriv ℝ n (fun x => f x • I) x‖ ≤ ‖iteratedFDeriv ℝ n f x‖ := by
-  -- Tried using `norm_iteratedFDeriv_clm_apply_const` with `norm_iteratedFDeriv_smul_le`.
-  -- However, it was no easier than before; just replaced `I` with `ContinuousLinearMap.id`
-  -- change ‖iteratedFDeriv ℝ n (fun x => (f x • ContinuousLinearMap.id ℝ ℂ) I) x‖ ≤ ‖iteratedFDeriv ℝ n f x‖
-  -- refine le_trans (norm_iteratedFDeriv_clm_apply_const ?_ le_top) ?_
-  -- . exact ContDiff.smul hf contDiff_const
-  -- simp
-
-  refine le_trans (norm_iteratedFDeriv_smul_le hf contDiff_const _ le_top) ?_
-  -- All terms are zero except `i = 0`.
-  -- Non-trivial due to `Fin (n - n) ≠ Fin 0`.
-  -- Rewrite and flip the order of the sum to eliminate.
-  rw [Finset.sum_congr rfl (g := fun i =>
-      n.choose (n - i) * ‖iteratedFDeriv ℝ (n - (n - i)) f x‖ * ‖iteratedFDeriv ℝ (n - i) (fun _ => I) x‖)]
-  swap
-  . intro i hi
-    simp at hi
-    rw [Nat.choose_symm (Nat.le_of_lt_succ hi)]
-    rw [Nat.sub_sub_self (Nat.le_of_lt_succ hi)]
-  rw [Finset.sum_flip (fun u =>
-      n.choose u * ‖iteratedFDeriv ℝ (n - u) f x‖ * ‖iteratedFDeriv ℝ u (fun _ => I) x‖)]
-  rw [add_comm n 1]
-  rw [Finset.sum_range_add]
-  simp  -- Yay!
-  refine le_of_eq ?_
-  refine Finset.sum_eq_zero ?_
-  intro i _
+lemma hasTemperateGrowth_exp_real_smul_I :
+    Function.HasTemperateGrowth fun x : ℝ => exp (x • I) := by
+  refine ⟨contDiff_exp_real_smul_I, ?_⟩
+  intro n
+  refine ⟨n, 1, ?_⟩
+  intro x
+  rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv]
+  rw [iteratedDeriv_exp_real_smul_I_apply]
   simp
-  right
-  rw [iteratedFDeriv_const_of_ne] <;> simp
+  exact one_le_pow_of_one_le (by simp) n
 
 /--
 The imaginary exponential of a real-valued `HasTemperateGrowth` function is a `HasTemperateGrowth` function.
 
 TODO: Prove for more general `g : E → ℂ` with `|(g x).re| ≤ 1`?
 -/
-theorem _root_.Function.HasTemperateGrowth.exp_real_smul_I {f : E → ℝ} (hf : Function.HasTemperateGrowth f) :
-    Function.HasTemperateGrowth fun x => exp (f x • I) := by
-  refine ⟨?_, ?_⟩
-  . exact ContDiff.cexp_real_smul_I hf.1
-  . intro n
-    induction n using Nat.caseStrongInductionOn with
-    | zero =>
-      refine ⟨0, 1, ?_⟩
-      simp
-    | ind n h_ind =>
-      simp [iteratedFDeriv_succ_eq_comp_right, -real_smul]
-      have hf_diff := hf.1.differentiable le_top
-      simp_rw [fderiv_cexp_real (hf_diff.smul_const I).differentiableAt]
-      clear hf_diff
-
-      -- Find bounding monomials for both terms for all `i`.
-      have h₁ : ∃ k₁ C₁, 0 ≤ C₁ ∧ ∀ i, i < n + 1 → ∀ x, ‖iteratedFDeriv ℝ i (fun y => cexp (f y • I)) x‖ ≤ C₁ * (1 + ‖x‖) ^ k₁
-      . refine _root_.bound_forall_range (n + 1) ?_
-        intro i hi
-        exact h_ind i (Nat.le_of_lt_succ hi)
-
-      -- Note: Technically don't need to include case `i = 0` here.
-      have h₂ : ∃ k₂ C₂, 0 ≤ C₂ ∧ ∀ i, i < n + 2 → ∀ x, ‖iteratedFDeriv ℝ i (fun y => f y • I) x‖ ≤ C₂ * (1 + ‖x‖) ^ k₂
-      . refine _root_.bound_forall_range (n + 2) ?_
-        intro i _
-        rcases hf.2 i with ⟨k, C, hC⟩
-        refine ⟨k, C, ?_⟩
-        intro x
-        specialize hC x
-        refine le_trans ?_ hC
-        exact norm_iteratedFDeriv_smul_I_le hf.1
-
-      rcases h₁ with ⟨k₁, C₁, ⟨hC₁_nonneg, hC₁⟩⟩
-      rcases h₂ with ⟨k₂, C₂, ⟨_, hC₂⟩⟩
-      refine ⟨k₁ + k₂, 2 ^ n * C₁ * C₂, ?_⟩
-      intro x
-      refine le_trans (norm_iteratedFDeriv_smul_le ?_ ?_ _ le_top) ?_
-      . exact ContDiff.cexp_real_smul_I hf.1
-      . refine ContDiff.fderiv_right ?_ le_top
-        exact ContDiff.smul hf.1 contDiff_const
-      simp_rw [norm_iteratedFDeriv_fderiv]
-
-      -- Now use the two bounds above.
-      simp only [mul_assoc]
-      simp only [← nsmul_eq_mul]
-      refine Finset.sum_range_choose_smul_le_pow_two_smul ?_
-      intro i hi
-      simp at hi
-      specialize hC₁ i hi x
-      specialize hC₂ (n - i + 1) ?_ x
-      . refine Nat.succ_le_succ ?_
-        refine Nat.succ_le_succ ?_
-        exact Nat.sub_le n i
-      refine le_of_le_of_eq (mul_le_mul hC₁ hC₂ ?_ ?_) ?_
-      . exact norm_nonneg _
-      . exact mul_nonneg hC₁_nonneg (by simp)
-      ring_nf
-
--- TODO: Implement in terms of more general method applied to `id`.
-lemma hasTemperateGrowth_exp_real_smul_I :
-    Function.HasTemperateGrowth fun x : ℝ => exp (x • I) :=
-  Function.HasTemperateGrowth.exp_real_smul_I (Function.hasTemperateGrowth_id ℝ)
+lemma _root_.Function.HasTemperateGrowth.exp_real_smul_I {f : E → ℝ} (hf : Function.HasTemperateGrowth f) :
+    Function.HasTemperateGrowth fun x => exp (f x • I) :=
+  Function.HasTemperateGrowth.comp hasTemperateGrowth_exp_real_smul_I hf
 
 -- TODO: Generalize to `f x` with bound on growth?
 -- Could there be a `HasTemperateGrowth.comp`? At least with a `ContinuousLinearMap`?
 lemma hasTemperateGrowth_exp_const_mul_real_smul_I {a : ℝ} :
     Function.HasTemperateGrowth fun x : ℝ => exp ((a * x) • I) :=
-  Function.HasTemperateGrowth.exp_real_smul_I Real.hasTemperateGrowth_mul_left
-
--- /-- More general than `contDiff_sin`; matches `contDiff_exp`. -/
--- lemma contDiff_sin' {𝕜 : Type*} [NontriviallyNormedField 𝕜] [NormedAlgebra 𝕜 ℂ] :
---     ContDiff 𝕜 ⊤ sin := by
---   simp [sin]
---   refine ContDiff.div_const (ContDiff.mul ?_ contDiff_const) 2
---   refine ContDiff.sub ?_ ?_
---   . exact ContDiff.cexp (ContDiff.neg (ContDiff.mul contDiff_id contDiff_const))
---   . exact ContDiff.cexp (ContDiff.mul contDiff_id contDiff_const)
-
--- /-- More general than `contDiff_cos`; matches `contDiff_exp`. -/
--- lemma contDiff_cos' {𝕜 : Type*} [NontriviallyNormedField 𝕜] [NormedAlgebra 𝕜 ℂ] :
---     ContDiff 𝕜 ⊤ cos := by
---   simp [cos]
---   refine ContDiff.div_const ?_ 2
---   refine ContDiff.add ?_ ?_
---   . exact ContDiff.cexp (ContDiff.mul contDiff_id contDiff_const)
---   . exact ContDiff.cexp (ContDiff.neg (ContDiff.mul contDiff_id contDiff_const))
+  Function.HasTemperateGrowth.comp hasTemperateGrowth_exp_real_smul_I Real.hasTemperateGrowth_mul_left
 
 end Complex
 
@@ -575,18 +429,32 @@ lemma hasTemperateGrowth_fourierChar_mul (w : ℝ) :
 end Real
 
 
--- section Vector
+section Vector
 
--- variable {E : Type*}
--- variable [NormedAddCommGroup E] [InnerProductSpace ℝ E]
+variable {E : Type*}
+variable [NormedAddCommGroup E] [InnerProductSpace ℝ E]
 
--- lemma hasTemperateGrowth_fourierChar_mul (w : E) :
---     Function.HasTemperateGrowth fun v : E => Complex.exp (↑(-(2 * π * inner v w)) * Complex.I) := by
---   simp
---   sorry
---   -- simp_rw [← Complex.real_smul]
---   -- simp_rw [mul_assoc _ _ w, mul_comm _ w, ← mul_assoc _ w]
---   -- simp_rw [← neg_mul]
---   -- exact Complex.hasTemperateGrowth_exp_const_mul_real_smul_I
+noncomputable def twoPiInnerI_right (w : E) : E →L[ℝ] ℂ :=
+  ContinuousLinearMap.smulRight ((2 * π) • isBoundedBilinearMap_inner.toContinuousLinearMap.flip w : E →L[ℝ] ℝ) Complex.I
 
--- end Vector
+lemma twoPiInnerI_right_apply {v : E} : twoPiInnerI_right w v = (↑(2 * π * inner v w) * Complex.I) := rfl
+
+noncomputable def innerL (v : E) : E →L[ℝ] ℝ := isBoundedBilinearMap_inner.toContinuousLinearMap v
+noncomputable def innerR (w : E) : E →L[ℝ] ℝ := isBoundedBilinearMap_inner.toContinuousLinearMap.flip w
+
+lemma innerL_apply {v w : E} : innerL v w = inner v w := rfl
+lemma innerR_apply {v w : E} : innerR w v = inner v w := rfl
+
+lemma hasTemperateGrowth_vectorFourierChar_innerR (w : E) :
+    Function.HasTemperateGrowth fun v : E => Complex.exp (↑(-(2 * π * inner v w)) * Complex.I) := by
+  simp_rw [← Complex.real_smul]
+  change Function.HasTemperateGrowth fun v => cexp (((-((2 * π) • innerR w)) v) • Complex.I)
+  exact Function.HasTemperateGrowth.exp_real_smul_I Function.HasTemperateGrowth.clm
+
+lemma hasTemperateGrowth_vectorFourierChar_innerL (v : E) :
+    Function.HasTemperateGrowth fun w : E => Complex.exp (↑(-(2 * π * inner v w)) * Complex.I) := by
+  simp_rw [← Complex.real_smul]
+  change Function.HasTemperateGrowth fun w => cexp (((-((2 * π) • innerL v)) w) • Complex.I)
+  exact Function.HasTemperateGrowth.exp_real_smul_I Function.HasTemperateGrowth.clm
+
+end Vector
