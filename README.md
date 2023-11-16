@@ -9,8 +9,9 @@ This project aims to prove useful theorems for machine learning in Lean.
 ## Theorems
 
 * Schwartz functions
+  * Schwartz functions are in `Lp`
   * Integral of a Schwartz function as a `ContinuousLinearMap`
-  * Integral against real-valued function that `HasTemperateGrowth` is a tempered distribution
+  * Integral against `HasTemperateGrowth` function is a tempered distribution
   * `HasTemperateGrowth` for trigonometric functions
   * Application of a CLM commutes with (iterated) Fréchet derivative
   * Iterated partial derivative is equal to iterated Fréchet derivative
