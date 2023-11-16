@@ -100,6 +100,11 @@ noncomputable def hasTemperateGrowth_smul : 𝓢(E, F) →L[ℝ] 𝓢(E, F) :=
 lemma hasTemperateGrowth_smul_apply {φ : 𝓢(E, F)} {x : E} :
     hasTemperateGrowth_smul hg φ x = g x • φ x := rfl
 
+noncomputable def id_smul (φ : 𝓢(𝕜, F)) : 𝓢(𝕜, F) :=
+  hasTemperateGrowth_smul (Function.hasTemperateGrowth_id 𝕜) φ
+
+lemma id_smul_apply {φ : 𝓢(𝕜, F)} {x : 𝕜} : id_smul φ x = x • φ x := rfl
+
 end SMul
 
 
@@ -136,31 +141,31 @@ end Pointwise
 -- scoped[SchwartzSpace] notation "𝓢'(" E ", " F ")" => 𝓢(E, F) →L[ℝ] F
 -- scoped[SchwartzSpace] notation "𝓢'[" 𝕜 "](" E ", " F ")" => SchwartzMap E F →L[𝕜] F
 
-namespace SchwartzMap
-namespace Distribution
-
 section IntegralAgainst
+
+variable [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable [NormedAddCommGroup F] [NormedSpace ℝ F]
 
 -- Need `NontriviallyNormedField` rather than `NormedField` for `MeasureTheory.integral_smul`.
 variable [NontriviallyNormedField 𝕜] [NormedAlgebra ℝ 𝕜]
-variable [NormedAddCommGroup E] [NormedSpace ℝ E]
-variable [NormedAddCommGroup F] [NormedSpace ℝ F]
 variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F] [IsScalarTower ℝ 𝕜 F]
 
 variable [CompleteSpace F]
 variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
 
-noncomputable def ofHasTemperateGrowth
+namespace SchwartzMap
+
+noncomputable def Distribution.ofHasTemperateGrowth
     {g : E → 𝕜} (hg : Function.HasTemperateGrowth g) : 𝓢(E, F) →L[ℝ] F :=
   integralCLM.comp (hasTemperateGrowth_smul hg)
 
-lemma ofHasTemperateGrowth_apply
+lemma Distribution.ofHasTemperateGrowth_apply
     {g : E → 𝕜} (hg : Function.HasTemperateGrowth g) {φ : 𝓢(E, F)} :
     ofHasTemperateGrowth hg φ = ∫ (x : E), g x • φ x := by
   rw [ofHasTemperateGrowth, ContinuousLinearMap.comp_apply, integralCLM_apply]
   rfl
 
-lemma ofHasTemperateGrowth_const {c : 𝕜} :
+lemma Distribution.ofHasTemperateGrowth_const {c : 𝕜} :
     ofHasTemperateGrowth
       (Function.hasTemperateGrowth_const : Function.HasTemperateGrowth (fun _ : E => c)) =
     SchwartzMap.Distribution.const E F c := by
@@ -169,7 +174,9 @@ lemma ofHasTemperateGrowth_const {c : 𝕜} :
   rw [const_apply]
   rw [integral_smul]
 
-end IntegralAgainst
+noncomputable def toDistribution (φ : 𝓢(E, 𝕜)) : 𝓢(E, F) →L[ℝ] F :=
+  Distribution.ofHasTemperateGrowth (SchwartzMap.hasTemperateGrowth φ)
 
-end Distribution  -- namespace
 end SchwartzMap  -- namespace
+
+end IntegralAgainst

@@ -13,6 +13,8 @@ import Mathlib.Analysis.SpecialFunctions.JapaneseBracket
 import Mathlib.MeasureTheory.Function.L1Space
 import Mathlib.MeasureTheory.Integral.Bochner
 
+import ForML.Util
+
 -- https://github.com/leanprover/lean4/issues/2220
 local macro_rules | `($x ^ $y) => `(HPow.hPow $x $y)
 
@@ -38,22 +40,6 @@ lemma ENNReal_rpow_ne_top {a : ENNReal} {p : ℝ} (hp : 0 < p) (h : a ≠ ⊤) :
 lemma ENNReal_rpow_lt_top {a : ENNReal} {p : ℝ} (hp : 0 < p) (h : a < ⊤) : a ^ p < ⊤ := by
   rw [lt_top_iff_ne_top] at h ⊢
   exact ENNReal_rpow_ne_top hp h
-
-
--- Define some handy `simp` lemmas for `1 + ‖x‖`.
-section OneAddNorm
-variable {α : Type*} [SeminormedAddGroup α]
-
-@[simp] lemma one_add_norm_pos (x : α) : 0 < 1 + ‖x‖ :=
-  add_pos_of_pos_of_nonneg zero_lt_one (norm_nonneg _)
-
-@[simp] lemma one_add_norm_nonneg (x : α) : 0 ≤ 1 + ‖x‖ :=
-  le_of_lt (one_add_norm_pos x)
-
-@[simp] lemma one_add_norm_ne_zero (x : α) : 1 + ‖x‖ ≠ 0 :=
-  ne_of_gt (one_add_norm_pos x)
-
-end OneAddNorm
 
 
 namespace SchwartzMap
@@ -243,11 +229,21 @@ Might be achieved by showing that smooth, compact functions are dense in `Lp`.
 lemma memℒp (f : 𝓢(E, F)) (p : ENNReal) : Memℒp f p :=
   ⟨f.continuous.aestronglyMeasurable, (snorm_lt_top f)⟩
 
-def toLp (p : ENNReal) (f : 𝓢(E, F)) : Lp (α := E) F p :=
-  Memℒp.toLp f (memℒp f p)
+-- def toLp (p : ENNReal) (f : 𝓢(E, F)) : Lp (α := E) F p :=
+--   Memℒp.toLp f (memℒp f p)
+
+-- This gives us a bit more for free.
+def addHomLp (p : ENNReal) : 𝓢(E, F) →+ Lp (α := E) F p where
+  toFun f := Memℒp.toLp f (memℒp f p)
+  map_zero' := rfl
+  map_add' _ _ := rfl
+
+def toLp (p : ENNReal) (f : 𝓢(E, F)) : Lp (α := E) F p := addHomLp p f
+
+example (p : ENNReal) (f : 𝓢(E, F)) : toLp p (-f) = -toLp p f := rfl
 
 lemma coeFn_toLp {p : ENNReal} (f : 𝓢(E, F)) : f.toLp p =ᵐ[volume] f :=
-  Memℒp.coeFn_toLp _
+  Memℒp.coeFn_toLp (memℒp f p)
 
 -- `L1` is useful for `L1.integralCLM`.
 -- Also, any function in `L1` is also in `Lp` with `1 < p`.
@@ -256,21 +252,18 @@ noncomputable def toL1 : 𝓢(E, F) → Lp (α := E) F 1 := toLp 1
 lemma coeFn_toL1 (f : 𝓢(E, F)) : f.toL1 =ᵐ[volume] f := by simp [toL1, coeFn_toLp]
 
 lemma norm_toL1_eq_integral (f : 𝓢(E, F)) : ‖toL1 f‖ = ∫ x, ‖f x‖ := by
-  simp [toL1, toLp]
+  simp [toL1, toLp, addHomLp]
   rw [snorm_one_eq_lintegral_nnnorm]
   rw [integral_norm_eq_lintegral_nnnorm f.continuous.aestronglyMeasurable]
-
--- TODO: Would it be useful to have this? Or no point?
--- TODO: Could use `NormedAddGroupHom` instead? Or would that mess up the SchwartzMap topology?
--- lemma addHomL1 : 𝓢(E, F) →+ Lp F 1 mE.volume where
---   toFun := toLp 1
---   map_zero' := by rfl
---   map_add' f g := by rfl
 
 -- Use `Memℒp f 1` to provide `Integrable`.
 lemma integrable (f : 𝓢(E, F)) : Integrable f := by
   rw [← memℒp_one_iff_integrable]
   exact memℒp f 1
+
+-- Use `Memℒp f ∞` to give bound on norm.
+lemma bound (f : 𝓢(E, F)) : ∀ x : E, ‖f x‖ ≤ ‖f.toBoundedContinuousFunction‖ := by
+  exact BoundedContinuousFunction.norm_coe_le_norm (toBoundedContinuousFunction f)
 
 
 section ToL1
