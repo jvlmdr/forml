@@ -166,9 +166,7 @@ lemma Distribution.ofHasTemperateGrowth_apply
   rfl
 
 lemma Distribution.ofHasTemperateGrowth_const {c : 𝕜} :
-    ofHasTemperateGrowth
-      (Function.hasTemperateGrowth_const : Function.HasTemperateGrowth (fun _ : E => c)) =
-    SchwartzMap.Distribution.const E F c := by
+    ofHasTemperateGrowth (Function.hasTemperateGrowth_const c) = SchwartzMap.Distribution.const E F c := by
   ext φ
   rw [ofHasTemperateGrowth_apply]
   rw [const_apply]
