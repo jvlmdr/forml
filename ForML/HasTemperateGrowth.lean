@@ -24,9 +24,8 @@ lemma Function.HasTemperateGrowth.differentiable {g : E → F} (hg : Function.Ha
 lemma Function.hasTemperateGrowth_const (c : F) : Function.HasTemperateGrowth (fun _ : E => c) := by
   refine ⟨contDiff_const, ?_⟩
   intro n
-  cases n with
-  | zero => refine ⟨0, ‖c‖, ?_⟩; simp
-  | succ n => refine ⟨0, 0, ?_⟩; simp [iteratedFDeriv_const_of_ne, Nat.succ_ne_zero]
+  refine ⟨0, ‖c‖, ?_⟩
+  cases n <;> simp [iteratedFDeriv_const_of_ne]
 
 /-- Any Schwartz function is a trivial example of `HasTemperateGrowth`. -/
 lemma SchwartzMap.hasTemperateGrowth (f : 𝓢(E, F)) : Function.HasTemperateGrowth f := by
@@ -184,6 +183,43 @@ theorem HasTemperateGrowth.comp
 end Compose
 
 
+section ParametricLinear
+
+variable {D E F : Type*}
+variable [NormedAddCommGroup D] [NormedSpace ℝ D]
+variable [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable [NormedAddCommGroup F] [NormedSpace ℝ F]
+
+/-- Application of a parametric `ContinuousLinearMap` is a `HasTemperateGrowth` function. -/
+lemma HasTemperateGrowth.clm_apply
+    {f : D → E →L[ℝ] F} (hf : HasTemperateGrowth f)
+    {g : D → E} (hg : HasTemperateGrowth g) :
+    HasTemperateGrowth fun x => (f x) (g x) := by
+  refine ⟨hf.1.clm_apply hg.1, ?_⟩
+  intro n
+  -- Obtain `k, C` for derivatives of `g` and `f`.
+  have hf_bound := hf.bound_forall_range (n + 1)
+  have hg_bound := hg.bound_forall_range (n + 1)
+  rcases hf_bound with ⟨k_f, C_f, ⟨hC_f_nonneg, hC_f⟩⟩
+  rcases hg_bound with ⟨k_g, C_g, ⟨_, hC_g⟩⟩
+  use k_f + k_g
+  use 2 ^ n * C_f * C_g
+  intro x
+  refine le_trans (norm_iteratedFDeriv_clm_apply hf.1 hg.1 _ le_top) ?_
+  simp [mul_assoc]
+  norm_cast
+  refine Finset.sum_range_choose_mul_le_pow_two_mul_real ?_
+  intro i hi
+  refine le_trans (mul_le_mul (hC_f i hi x) (hC_g (n - i) ?_ x) (norm_nonneg _) ?_) ?_
+  . simp
+    exact Nat.sub_lt_succ n i
+  . simp [hC_f_nonneg]
+  refine le_of_eq ?_
+  ring_nf
+
+end ParametricLinear
+
+
 section Linear
 
 variable {E F G 𝔸 : Type*}
@@ -191,40 +227,38 @@ variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 variable [NormedAddCommGroup F] [NormedSpace ℝ F]
 variable [NormedAddCommGroup G] [NormedSpace ℝ G]
 
-/-- Any `ContinuousLinearMap` is a `HasTemperateGrowth` function. -/
-lemma hasTemperateGrowth_clm (a : E →L[ℝ] F) : HasTemperateGrowth fun x => a x := by
-  refine ⟨contDiff_const.clm_apply contDiff_id, ?_⟩
+lemma HasTemperateGrowth.clm (g : F →L[ℝ] G) {f : E → F} (hf : HasTemperateGrowth f) :
+    HasTemperateGrowth fun x => g (f x) :=
+  clm_apply (hasTemperateGrowth_const g) hf
+
+section Explicit
+
+variable (E)
+
+-- TODO: Can't use `HasTemperateGrowth.const_clm` with `ContinuousLinearMap.id` due to circular dependency?
+lemma hasTemperateGrowth_id : Function.HasTemperateGrowth (id : E → E) := by
+  refine ⟨contDiff_id, ?_⟩
   intro n
-  refine ⟨1, ‖a‖, ?_⟩
+  refine ⟨1, 1, ?_⟩
   intro x
-  refine le_trans (norm_iteratedFDeriv_clm_apply contDiff_const contDiff_id _ le_top) ?_
-  -- Only need to consider first term.
-  rw [add_comm n 1]
-  rw [Finset.sum_range_add]
   simp
-  rw [Finset.sum_eq_zero ?_]
-  swap
-  . intro i _
-    rw [iteratedFDeriv_const_of_ne] <;> simp
-  simp
-  refine mul_le_mul_of_nonneg_left ?_ (norm_nonneg _)
   cases n with
   | zero => simp
   | succ n =>
-    rw [iteratedFDeriv_succ_eq_comp_right]
     cases n with
-    | zero => simp; refine le_trans ContinuousLinearMap.norm_id_le (by simp)
-    | succ n => simp; rw [iteratedFDeriv_const_of_ne] <;> simp
+    | zero =>
+      simp [iteratedFDeriv_succ_eq_comp_right]
+      refine le_trans ContinuousLinearMap.norm_id_le (by simp)
+    | succ n =>
+      rw [iteratedFDeriv_succ_eq_comp_right]
+      simp
+      simp [iteratedFDeriv_const_of_ne]
 
-lemma HasTemperateGrowth.clm (g : F →L[ℝ] G) {f : E → F} (hf : HasTemperateGrowth f) :
-    HasTemperateGrowth fun x => g (f x) :=
-  comp (hasTemperateGrowth_clm _) hf
-
-section Explicit
-variable (E)
-lemma hasTemperateGrowth_id : HasTemperateGrowth (id : E → E) :=
-  hasTemperateGrowth_clm (ContinuousLinearMap.id ℝ E)
 end Explicit
+
+/-- Any `ContinuousLinearMap` is a `HasTemperateGrowth` function. -/
+lemma hasTemperateGrowth_clm (a : E →L[ℝ] F) : HasTemperateGrowth fun x => a x :=
+  (hasTemperateGrowth_id E).clm a
 
 lemma hasTemperateGrowth_neg : HasTemperateGrowth fun x : E => (-x) := hasTemperateGrowth_clm (-ContinuousLinearMap.id ℝ E)
 lemma hasTemperateGrowth_re : HasTemperateGrowth fun x : ℂ => x.re := hasTemperateGrowth_clm Complex.reClm
@@ -260,24 +294,6 @@ lemma HasTemperateGrowth.div_const {f : E → 𝔸} (hf : HasTemperateGrowth f) 
 end Div
 
 end Linear
-
-
-section ParametricLinear
-
-variable {D E F G 𝔸 : Type*}
-variable [NormedAddCommGroup D] [NormedSpace ℝ D]
-variable [NormedAddCommGroup E] [NormedSpace ℝ E]
-variable [NormedAddCommGroup F] [NormedSpace ℝ F]
-
-/-- Application of a parametric `ContinuousLinearMap` is a `HasTemperateGrowth` function. -/
-lemma HasTemperateGrowth.clm_apply
-    {f : D → E →L[ℝ] F} (hf : HasTemperateGrowth f)
-    {g : D → E} (hg : HasTemperateGrowth g) :
-    HasTemperateGrowth fun x => (f x) (g x) := by
-  refine ⟨hf.1.clm_apply hg.1, ?_⟩
-  sorry
-
-end ParametricLinear
 
 
 section Add
@@ -376,8 +392,7 @@ variable [NormedAddCommGroup F] [NormedSpace ℝ F]
 variable [NormedAddCommGroup G] [NormedSpace ℝ G]
 variable [NormedAddCommGroup H] [NormedSpace ℝ H]
 
-lemma HasTemperateGrowth.bilin
-    (B : F →L[ℝ] G →L[ℝ] H)
+lemma HasTemperateGrowth.bilin (B : F →L[ℝ] G →L[ℝ] H)
     {f : E → F} (hf : HasTemperateGrowth f)
     {g : E → G} (hg : HasTemperateGrowth g) :
     HasTemperateGrowth fun x => B (f x) (g x) :=
@@ -385,18 +400,13 @@ lemma HasTemperateGrowth.bilin
 
 end Bilinear
 
-
 section SMul
 
-variable {𝕜 E F : Type*}
+variable {E F : Type*}
+variable [NormedAddCommGroup D] [NormedSpace ℝ D]
 variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 variable [NormedAddCommGroup F] [NormedSpace ℝ F]
-variable [NormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
-example (x : ℝ) (y : F) : x • y = ContinuousLinearMap.smulRightL ℝ ℝ F (ContinuousLinearMap.id ℝ ℝ) y x := rfl
-
--- TODO: Add `mul`.
--- TODO: Add `smulRightL` that generalizes beyond `ℝ` with `S →[ℝ] ℝ` applied to lhs?
 lemma HasTemperateGrowth.smul
     {f : E → ℝ} (hf : HasTemperateGrowth f)
     {g : E → F} (hg : HasTemperateGrowth g) :
@@ -404,6 +414,21 @@ lemma HasTemperateGrowth.smul
   bilin (ContinuousLinearMap.smulRightL ℝ ℝ F (ContinuousLinearMap.id ℝ ℝ)) hg hf
 
 end SMul
+
+section Mul
+
+variable {E F : Type*}
+variable [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable [NonUnitalNormedRing F] [NormedSpace ℝ F]
+variable [IsScalarTower ℝ F F] [SMulCommClass ℝ F F]
+
+lemma HasTemperateGrowth.mul
+    {f : E → F} (hf : HasTemperateGrowth f)
+    {g : E → F} (hg : HasTemperateGrowth g) :
+    HasTemperateGrowth fun x => f x * g x :=
+  bilin (ContinuousLinearMap.mul ℝ F) hf hg
+
+end Mul
 
 end Function  -- namespace
 
