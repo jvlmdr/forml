@@ -4,7 +4,7 @@ import Mathlib.MeasureTheory.Integral.Bochner
 import ForML.SchwartzLp
 import ForML.HasTemperateGrowth
 
-open MeasureTheory SchwartzSpace
+open MeasureTheory SchwartzSpace RealInnerProductSpace
 open scoped Real Complex
 
 -- A tempered distribution is a linear functional on the Schwartz space.
@@ -51,37 +51,10 @@ open scoped Real Complex
 -- `VectorFourier.fourierIntegral_continuous` for functions with finite integral.
 
 
-variable {𝕜 𝕜' E F G : Type*}
+variable {𝕜 𝕜' D E F G : Type*}
 
 -- First define CLMs that perform pointwise multiplication, then compose with integral.
-
 section Pointwise
-
--- No longer needed; just define mul using smul.
-/-
-section Bilin
-
-variable [NontriviallyNormedField 𝕜]
-variable [NontriviallyNormedField F]
-variable [NormedAlgebra 𝕜 F]
-
-section Def  -- Make `𝕜` explicit to match `ContinuousLinearMap.restrictScalars`.
-variable (𝕜)
-
-/-- Convenience function for restricting multiplication.
-
-TODO: This might be generalized to something like `(E →L[𝕜'] F →L[𝕜''] G) → E →L[𝕜] F →L[𝕜] G`.
--/
-noncomputable def bilin_restrictScalars (f : F →L[F] F →L[F] F) : F →L[𝕜] F →L[𝕜] F :=
-  (ContinuousLinearMap.restrictScalarsL F F F 𝕜 𝕜).comp (f.restrictScalars 𝕜)
-
-end Def
-
-lemma bilin_restrictScalars_apply {f : F →L[F] F →L[F] F} {x y : F} :
-    bilin_restrictScalars 𝕜 f x y = f x y := rfl
-
-end Bilin
--/
 
 namespace SchwartzMap
 
@@ -101,7 +74,7 @@ lemma hasTemperateGrowth_smul_apply {φ : 𝓢(E, F)} {x : E} :
     hasTemperateGrowth_smul hg φ x = g x • φ x := rfl
 
 noncomputable def id_smul (φ : 𝓢(𝕜, F)) : 𝓢(𝕜, F) :=
-  hasTemperateGrowth_smul (Function.hasTemperateGrowth_id 𝕜) φ
+  hasTemperateGrowth_smul Function.hasTemperateGrowth_id φ
 
 lemma id_smul_apply {φ : 𝓢(𝕜, F)} {x : 𝕜} : id_smul φ x = x • φ x := rfl
 
@@ -132,6 +105,107 @@ lemma hasTemperateGrowth_smul_eq_hasTemperateGrowth_mul {φ : 𝓢(E, 𝕜)} {x 
 end Mul
 
 end SchwartzMap  -- namespace
+
+
+
+section Map
+
+variable [NormedAddCommGroup D] [NormedSpace ℝ D]
+variable [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable [NormedAddCommGroup G] [NormedSpace ℝ G]
+
+noncomputable def SchwartzMap.hasTemperateGrowth_apply
+    {g : D → E →L[ℝ] G} (hg : Function.HasTemperateGrowth g) : 𝓢(D, E) →L[ℝ] 𝓢(D, G) :=
+  bilinLeftCLM (ContinuousLinearMap.apply ℝ G) hg
+
+end Map
+
+
+section InnerProduct
+
+variable [NormedAddCommGroup E] [hE : InnerProductSpace ℝ E]
+variable [NormedAddCommGroup F] [NormedSpace ℝ F]
+instance : NormedSpace ℝ E := hE.toNormedSpace  -- Type system doesn't find this?
+
+-- Tried adding this as a simp lemma but it doesn't seem to help.
+@[simp] lemma fderiv_const_innerSL : fderiv ℝ (fun _ : E => innerSL ℝ (E := E)) x = 0 := by
+  rw [fderiv_const]
+  rfl
+
+lemma fderiv_innerSL_apply {x : E} : fderiv ℝ (fun x : E => innerSL ℝ x) x = innerSL ℝ := by
+  refine ContinuousLinearMap.ext ?_
+  intro u
+  refine ContinuousLinearMap.ext ?_
+  intro dx
+  rw [fderiv_clm_apply (differentiableAt_const _) differentiableAt_id']
+  rw [ContinuousLinearMap.add_apply]
+  rw [ContinuousLinearMap.add_apply]
+  rw [ContinuousLinearMap.flip_apply]
+  rw [fderiv_const]
+  change _ + 0 = _  -- Needs help to resolve.
+  simp
+  rw [ContinuousLinearMap.comp_apply]
+  rfl
+
+lemma norm_innerSL_le : ‖innerSL ℝ (E := E)‖ ≤ 1 := by
+  rw [ContinuousLinearMap.norm_def]  -- Need explicit `NormedSpace` instance for these rewrites.
+  simp
+  -- Rather than trying to prove, just steal this result from the id map.
+  have : ‖ContinuousLinearMap.id ℝ E‖ ≤ 1 := ContinuousLinearMap.norm_id_le
+  rw [ContinuousLinearMap.norm_def] at this
+  simpa using this
+
+-- The function `x ↦ (u ↦ ⟪x, u⟫)` is a `HasTemperateGrowth` function.
+lemma Function.hasTemperateGrowth_innerSL : HasTemperateGrowth fun x : E => innerSL ℝ x := by
+  refine ⟨contDiff_const.clm_apply contDiff_id, ?_⟩
+  intro n
+  refine ⟨1, 1, ?_⟩
+  intro x
+  simp
+  cases n with
+  | zero => simp
+  | succ n =>
+    simp [iteratedFDeriv_succ_eq_comp_right]
+    simp_rw [fderiv_innerSL_apply]
+    cases n with
+    | zero =>
+      simp
+      refine le_trans norm_innerSL_le (by simp)
+    | succ n =>
+      rw [iteratedFDeriv_const_of_ne]
+      . change ‖0‖ ≤ _
+        simp
+      . simp
+
+/-- CLM that represents `x ↦ ⟪x, u⟫ • c` as a CLM `F →L[ℝ] E →L[ℝ] F` (could make first map linear too?). -/
+noncomputable def innerSL_smul
+    (F : Type*) [NormedAddCommGroup F] [NormedSpace ℝ F]
+    (x : E) : F →L[ℝ] E →L[ℝ] F :=
+  ContinuousLinearMap.smulRightL ℝ E F (innerSL ℝ x)
+
+lemma innerSL_smul_apply {x u : E} {c : F} : (innerSL_smul F x) c u = ⟪x, u⟫ • c := rfl
+
+lemma innerSL_smul_comm {x u : E} {c : F} : (innerSL_smul F x) c u = (innerSL_smul F u) c x := by
+  simp [innerSL_smul_apply]
+  rw [real_inner_comm]
+
+lemma Function.hasTemperateGrowth_innerSL_smul
+    (F : Type*) [NormedAddCommGroup F] [NormedSpace ℝ F] :
+    HasTemperateGrowth fun x : E => innerSL_smul F x :=
+  HasTemperateGrowth.clm _ hasTemperateGrowth_innerSL
+
+-- Schwartz CLM for `x ↦ ⟪x, u⟫ • f x`.
+noncomputable def SchwartzMap.innerSL_smul : 𝓢(E, F) →L[ℝ] 𝓢(E, E →L[ℝ] F) :=
+  bilinLeftCLM (ContinuousLinearMap.apply ℝ (E →L[ℝ] F)) (Function.hasTemperateGrowth_innerSL_smul F)
+
+lemma SchwartzMap.innerSL_smul_apply {φ : 𝓢(E, F)} {x u : E} :
+    SchwartzMap.innerSL_smul φ x u = ⟪x, u⟫ • φ x := rfl
+
+lemma SchwartzMap.innerSL_smul_one_eq_id_smul {φ : 𝓢(ℝ, F)} {x : ℝ} :
+    SchwartzMap.innerSL_smul φ x 1 = SchwartzMap.id_smul φ x := by
+  simp [innerSL_smul_apply, id_smul_apply]
+
+end InnerProduct
 
 end Pointwise
 

@@ -388,6 +388,17 @@ lemma integralCLM_apply {f : 𝓢(E, F)} : integralCLM f = ∫ x, f x := by
   rw [integralCLM]
   exact integralCLM'_apply
 
+lemma integralCLM_neg_apply {f : 𝓢(E, F)} : integralCLM (-f) = -(integralCLM f) := by
+  rw [ContinuousLinearMap.map_neg]
+  -- simp [integralCLM_apply]
+
+lemma integralCLM_smul_apply
+    {𝕜 : Type*} [NontriviallyNormedField 𝕜] [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+    {c : 𝕜} {f : 𝓢(E, F)} : integralCLM (c • f) = c • (integralCLM f) := by
+  -- rw [ContinuousLinearMap.map_smul integralCLM c f]
+  -- rw [ContinuousLinearMap.map_smul_of_tower integralCLM c f]
+  simp [integralCLM_apply, integral_smul]
+
 
 namespace Distribution
 
