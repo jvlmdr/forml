@@ -174,18 +174,21 @@ lemma snorm_top_lt_top (f : 𝓢(E, F)) : snorm f ⊤ volume < ⊤ := by
   simp at hC
   exact snormEssSup_lt_top_of_ae_bound (Filter.eventually_of_forall hC.right)
 
-/- Schwartz maps in `𝓢(E, F)` are in `Lp` for `p ∈ (0, ∞)` and finite-dimensional `E`.
+-- lemma nnnorm_rpow_real_of_nonneg {x : ℝ} (hx : 0 ≤ x) {r : ℝ} : ‖x ^ r‖₊ = ‖x‖₊ ^ r := by
+--   ext
+--   simp
+--   exact Real.abs_rpow_of_nonneg hx
 
-Only holds for `volume` (inherited from `integrable_one_add_norm`).
--/
-lemma snorm_nnreal_lt_top (f : 𝓢(E, F)) {p : NNReal} (hp : 0 < p) : snorm f p volume < ⊤ := by
+/-- More general version of `snorm_nnreal_lt_top`. -/
+lemma snorm_nnreal_one_add_norm_rpow_smul_lt_top (n : ℝ) (f : 𝓢(E, F)) {p : NNReal} (hp : 0 < p) :
+    snorm (fun x => (1 + ‖x‖) ^ n • f x) p volume < ⊤ := by
   simp [snorm, hp.ne', snorm']
   refine ENNReal_rpow_lt_top (inv_pos_of_pos hp) ?_
   generalize hr : (FiniteDimensional.finrank ℝ E + 1 : ℝ) = r
   -- Need to get `C` for condition.
-  rcases pow_norm_le_pow_one_add_norm f hp r with ⟨C, ⟨hC_nonneg, hC⟩⟩
+  rcases pow_norm_le_pow_one_add_norm f hp (r + n * p) with ⟨C, ⟨hC_nonneg, hC⟩⟩
   simp at hC
-  suffices : ∫⁻ (x : E), (‖f x‖₊ : ENNReal) ^ (p : ℝ) ≤ ∫⁻ (x : E), ENNReal.ofReal (C * (1 + ‖x‖) ^ (-r))
+  suffices : ∫⁻ (x : E), (‖(1 + ‖x‖) ^ n • f x‖₊ : ENNReal) ^ (p : ℝ) ≤ ∫⁻ (x : E), ENNReal.ofReal (C * (1 + ‖x‖) ^ (-r))
   . refine lt_of_le_of_lt this ?_
     -- Remove the `C` from the condition.
     simp_rw [ENNReal.ofReal_mul hC_nonneg]
@@ -200,17 +203,75 @@ lemma snorm_nnreal_lt_top (f : 𝓢(E, F)) {p : NNReal} (hp : 0 < p) : snorm f p
     simp [← hr]
   refine lintegral_mono ?_
   intro x
-  -- Get to NNReal.
+  specialize hC x
   simp
+  -- Get to NNReal.
   rw [ENNReal.ofReal]
-  have hp_coe_pos : 0 < (p : ℝ) := hp
-  rw [ENNReal.coe_rpow_of_nonneg _ hp_coe_pos.le]
+  rw [ENNReal.coe_rpow_of_nonneg _ p.coe_nonneg]
   norm_cast
   -- Get to ℝ.
   rw [← norm_toNNReal]
-  rw [← Real.toNNReal_rpow_of_nonneg (norm_nonneg _)]
+  simp [← Real.toNNReal_rpow_of_nonneg, norm_nonneg]
   refine Real.toNNReal_le_toNNReal ?_
-  exact hC x
+  -- Show inequality.
+  -- TODO: Uses simp lemmas in Util. Feels a bit sloppy?
+  simp [norm_smul]
+  rw [Real.mul_rpow (by simp) (by simp)]
+  rw [abs_of_nonneg (by simp)]
+  rw [← Real.rpow_mul (by simp)]
+  rw [← le_div_iff' (by simp)]
+  refine le_of_le_of_eq hC ?_
+  rw [Real.rpow_add (by simp)]
+  rw [mul_div_assoc, div_eq_inv_mul]
+  rw [Real.rpow_neg]
+  simp
+
+lemma integrable_one_add_norm_rpow_smul {n : ℝ} {f : 𝓢(E, F)} : Integrable fun x => (1 + ‖x‖) ^ n • f x := by
+  refine And.intro ?_ ?_
+  . refine AEStronglyMeasurable.smul ?_ f.continuous.aestronglyMeasurable
+    refine (AEMeasurable.pow_const ?_ n).aestronglyMeasurable
+    exact (continuous_const.add continuous_norm).aemeasurable
+  . rw [HasFiniteIntegral]
+    rw [← snorm_one_eq_lintegral_nnnorm]
+    exact snorm_nnreal_one_add_norm_rpow_smul_lt_top n f zero_lt_one
+
+lemma integrable_norm_pow_smul {n : ℕ} {f : 𝓢(E, F)} : Integrable fun x => ‖x‖ ^ n • f x := by
+  refine And.intro ?_ ?_
+  . refine AEStronglyMeasurable.smul ?_ f.continuous.aestronglyMeasurable
+    refine (AEMeasurable.pow_const ?_ n).aestronglyMeasurable
+    exact measurable_norm.aemeasurable
+  . rw [HasFiniteIntegral]
+    rw [← snorm_one_eq_lintegral_nnnorm]
+    refine lt_of_le_of_lt ?_ (snorm_nnreal_one_add_norm_rpow_smul_lt_top n f zero_lt_one)
+    refine snorm_mono ?_
+    intro x
+    simp [norm_smul]
+    refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg (f x))
+    rw [abs_of_nonneg (by simp)]
+    refine pow_le_pow_of_le_left ?_ ?_ _ <;> simp
+
+lemma integrable_norm_pow_mul_norm {n : ℕ} {f : 𝓢(E, F)} : Integrable fun x => ‖x‖ ^ n * ‖f x‖ := by
+  refine And.intro ?_ ?_
+  . refine AEStronglyMeasurable.mul ?_ f.continuous.norm.aestronglyMeasurable
+    refine (AEMeasurable.pow_const ?_ n).aestronglyMeasurable
+    exact measurable_norm.aemeasurable
+  . rw [HasFiniteIntegral]
+    rw [← snorm_one_eq_lintegral_nnnorm]
+    refine lt_of_le_of_lt ?_ (snorm_nnreal_one_add_norm_rpow_smul_lt_top n f zero_lt_one)
+    refine snorm_mono ?_
+    intro x
+    simp [norm_smul]
+    refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg (f x))
+    rw [abs_of_nonneg (by simp)]
+    refine pow_le_pow_of_le_left ?_ ?_ _ <;> simp
+
+/--
+Schwartz maps in `𝓢(E, F)` are in `Lp` for `p ∈ (0, ∞)` and finite-dimensional `E`.
+
+Only holds for `volume` (inherited from `integrable_one_add_norm`).
+-/
+lemma snorm_nnreal_lt_top (f : 𝓢(E, F)) {p : NNReal} (hp : 0 < p) : snorm f p volume < ⊤ := by
+  simpa using snorm_nnreal_one_add_norm_rpow_smul_lt_top 0 f hp
 
 lemma snorm_lt_top (f : 𝓢(E, F)) {p : ENNReal} : snorm f p volume < ⊤ := by
   cases p with
@@ -257,7 +318,7 @@ lemma norm_toL1_eq_integral (f : 𝓢(E, F)) : ‖toL1 f‖ = ∫ x, ‖f x‖ :
   rw [integral_norm_eq_lintegral_nnnorm f.continuous.aestronglyMeasurable]
 
 -- Use `Memℒp f 1` to provide `Integrable`.
-lemma integrable (f : 𝓢(E, F)) : Integrable f := by
+lemma integrable (f : 𝓢(E, F)) : Integrable (fun x => f x) := by
   rw [← memℒp_one_iff_integrable]
   exact memℒp f 1
 
@@ -295,11 +356,19 @@ lemma pow_one_add_norm_mul_norm_le_two_pow_sup_Iic_seminorm (k : ℕ) (f : 𝓢(
   specialize this f x
   simpa
 
+section Explicit
+variable (𝕜)  -- Only appears on one side of inequality.
+lemma pow_norm_mul_norm_le_two_pow_sup_Iic_seminorm {k : ℕ} {f : 𝓢(E, F)} (x : E) :
+    ‖x‖ ^ k * ‖f x‖ ≤ ↑2 ^ k * sup_Iic_seminorm 𝕜 k 0 f := by
+  refine le_trans ?_ (pow_one_add_norm_mul_norm_le_two_pow_sup_Iic_seminorm k f x)
+  refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg _)
+  refine pow_le_pow_of_le_left ?_ ?_ k <;> simp
+end Explicit
+
 -- Re-arrange as upper bound of a function by a function.
 -- TODO: Eliminate this lemma? It's trivial and not that useful.
 lemma norm_le_sup_Iic_seminorm_mul_one_add_norm_pow_neg (k : ℕ) (f : 𝓢(E, F)) (x : E) :
     ‖f x‖ ≤ ↑2 ^ k * sup_Iic_seminorm 𝕜 k 0 f * (1 + ‖x‖) ^ (-k : ℝ) := by
-  simp
   simp [Real.rpow_neg]
   rw [mul_comm, inv_mul_eq_div]
   simp [le_div_iff']
@@ -312,7 +381,6 @@ lemma norm_le_sup_Iic_seminorm_mul_one_add_norm_pow_neg (k : ℕ) (f : 𝓢(E, F
 lemma integral_norm_le_const_mul_sup_Iic_seminorm
     {r : ℕ} (hr : FiniteDimensional.finrank ℝ E < r) (f : 𝓢(E, F)) :
     ∫ x, ‖f x‖ ≤ (↑2 ^ r * ∫ (x : E), (1 + ‖x‖) ^ (-r : ℝ)) * sup_Iic_seminorm 𝕜 r 0 f := by
-  simp
   have h_int : Integrable (fun (x : E) => (1 + ‖x‖) ^ (-r : ℝ))
   . refine integrable_one_add_norm ?_
     norm_cast
