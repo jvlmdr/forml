@@ -268,10 +268,10 @@ variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
 variable [NormedSpace 𝕜 E] [NormedSpace 𝕜 F] [NormedSpace 𝕜 G]
 variable [NormedAlgebra ℝ 𝕜] [IsScalarTower ℝ 𝕜 G] [SMulCommClass ℝ 𝕜 G]
 
-lemma HasTemperateGrowth.clm' (g : F →L[𝕜] G) {f : E → F} (hf : HasTemperateGrowth f) :
-    HasTemperateGrowth fun x => g (f x) := by
-  change HasTemperateGrowth fun x => g.restrictScalars ℝ (f x)
-  exact clm_apply (hasTemperateGrowth_const g) hf
+-- lemma HasTemperateGrowth.clm' (g : F →L[𝕜] G) {f : E → F} (hf : HasTemperateGrowth f) :
+--     HasTemperateGrowth fun x => g (f x) := by
+--   change HasTemperateGrowth fun x => g.restrictScalars ℝ (f x)
+--   exact clm_apply (hasTemperateGrowth_const g) hf
 
 lemma HasTemperateGrowth.clm (g : F →L[ℝ] G) {f : E → F} (hf : HasTemperateGrowth f) :
     HasTemperateGrowth fun x => g (f x) :=
