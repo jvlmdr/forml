@@ -43,7 +43,8 @@ lemma iteratedFDeriv_fderiv_apply {n : ℕ} {f : α → G} {x : α} {m : Fin n �
   rw [contDiff_succ_iff_fderiv] at hf
   rw [iteratedFDeriv_clm_apply_const hf.right]
 
--- How to use `LinearIsometryEquiv` for multilinear maps.
+
+-- How to use `LinearIsometryEquiv` for multilinear maps:
 
 example {y : α} {c : α → α[×0]→L[𝕜] G} : (c y) 0 = (continuousMultilinearCurryFin0 𝕜 α G) (c y) := rfl
 
@@ -55,7 +56,9 @@ example {y : α} {c : α → α[×(n + 1)]→L[𝕜] G} :
     ContinuousMultilinearMap.curryLeft (c y) =
     (continuousMultilinearCurryLeftEquiv 𝕜 (fun _ : Fin (n + 1) => α) G).symm (c y) := rfl
 
-/-- The Fréchet derivative of the application of a `ContinuousMultilinearMap`.
+
+/--
+The Fréchet derivative of the application of a `ContinuousMultilinearMap`.
 
 TODO: Add version for multilinear map with pi type `(i : Fin n) → α i`.
 -/
