@@ -1,43 +1,46 @@
+import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.MeasureTheory.Constructions.Pi
 import Mathlib.MeasureTheory.Constructions.Prod.Integral
 import Mathlib.MeasureTheory.Integral.Bochner
+import Mathlib.MeasureTheory.Measure.Haar.OfBasis
 
--- https://github.com/leanprover/lean4/issues/2220
-local macro_rules | `($x ^ $y) => `(HPow.hPow $x $y)
+import ForML.PiEquiv
 
 open MeasureTheory
 
+variable {ι : Type*} [Fintype ι] [DecidableEq ι]
 variable {E F : Type*}
 variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 variable [NormedAddCommGroup F] [NormedSpace ℝ F] [CompleteSpace F]
 variable [mE : MeasureSpace E] [SigmaFinite mE.volume]
 
-/-- If a function is integrable on `ℝ^(n+1)`, then it is integrable on `ℝ × ℝ^n`. -/
-lemma integrable_comp_insertNth {i : Fin (n + 1)} {f : (Fin (n + 1) → E) → F} (hf : Integrable f) :
-    Integrable fun p : E × (Fin n → E) => f (Fin.insertNth i p.1 p.2) := by
-  change Integrable (f ∘ (MeasurableEquiv.piFinSuccAboveEquiv (fun _ => E) i).symm) _
+-- TODO: Generalize to `(j : ι) → E j`? Rename this version to "const" or "vector"?
+lemma integral_piSplitAt (i : ι) {f : (ι → E) → F} :
+    ∫ x, f x = ∫ p : E × ({j // j ≠ i} → E), f (fun j => if h : j = i then p.1 else p.2 ⟨j, h⟩) := by
+  have he := (MeasurableEquiv.volume_preserving_piSplitAt (fun _ => E) i).symm
+  rw [← he.map_eq]
+  rw [integral_map_equiv]
+  rw [Measure.volume_eq_prod]
+  rfl
+
+lemma integrable_piSplitAt (i : ι) {f : (ι → E) → F} (hf : Integrable f) :
+    Integrable fun p : E × ({j // j ≠ i} → E) => f (fun j => if h : j = i then p.1 else p.2 ⟨j, h⟩) := by
+  change Integrable (f ∘ ((MeasurableEquiv.piSplitAt (fun _ => E) i).symm)) _
   rw [← integrable_map_equiv]
-  have h := (volume_preserving_piFinSuccAboveEquiv (fun _ => E) i).symm
-  rw [h.map_eq]
+  -- TODO: Cleaner way that avoids applying same steps in reverse?
+  have he := (MeasurableEquiv.volume_preserving_piSplitAt (fun _ => E) i).symm
+  rw [he.map_eq]
   exact hf
 
-/-- Rewrite an integral over `E^(n+1)` as an integral over `E` of an integral over `E^n`. -/
-theorem integral_pi_left (i : Fin (n + 1)) {f : (Fin (n + 1) → E) → F} (hf : Integrable f) :
-    ∫ x, f x = ∫ (xi : E) (x : Fin n → E), f (Fin.insertNth i xi x) := by
-  have h := (volume_preserving_piFinSuccAboveEquiv (fun _ => E) i).symm
-  rw [← h.map_eq]
-  rw [integral_map_equiv]
-  simp
+lemma integral_piSplitAt_left (i : ι) {f : (ι → E) → F} (hf : Integrable f) :
+    ∫ x, f x = ∫ (u : E) (x : {j // j ≠ i} → E), f (fun j : ι => if h : j = i then u else x ⟨j, h⟩) := by
+  rw [integral_piSplitAt i]
   rw [Measure.volume_eq_prod]
-  rw [integral_prod]
-  rw [← Measure.volume_eq_prod]
-  exact integrable_comp_insertNth hf
+  rw [integral_prod _ (integrable_piSplitAt i hf)]
 
-/-- Rewrite an integral over `E^(n+1)` as an integral over `E^n` of an integral over `E`. -/
-theorem integral_pi_right (i : Fin (n + 1)) {f : (Fin (n + 1) → E) → F} (hf : Integrable f) :
-    ∫ x, f x = ∫ (x : Fin n → E) (xi : E), f (Fin.insertNth i xi x) := by
-  rw [integral_pi_left i hf]
+lemma integral_piSplitAt_right (i : ι) {f : (ι → E) → F} (hf : Integrable f) :
+    ∫ x, f x = ∫ (x : {j // j ≠ i} → E) (u : E), f (fun j : ι => if h : j = i then u else x ⟨j, h⟩) := by
+  rw [integral_piSplitAt_left i hf]
   rw [integral_integral_swap]
   rw [Function.uncurry_def]
-  rw [← Measure.volume_eq_prod]
-  exact integrable_comp_insertNth hf
+  exact integrable_piSplitAt i hf

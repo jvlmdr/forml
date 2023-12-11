@@ -214,6 +214,46 @@ lemma HasTemperateGrowth.clm_apply
   refine le_of_eq ?_
   ring_nf
 
+-- TODO: Generalize to CLMs with `𝕜`-linearity.
+
+-- variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
+-- variable [NormedSpace 𝕜 D] [NormedSpace 𝕜 E] [NormedSpace 𝕜 F]
+-- variable [NormedAlgebra ℝ 𝕜] [IsScalarTower ℝ 𝕜 F] [SMulCommClass ℝ 𝕜 F]
+
+-- /-- Application of a parametric `ContinuousLinearMap` is a `HasTemperateGrowth` function. -/
+-- lemma HasTemperateGrowth.clm_apply'
+--     {f : D → E →L[𝕜] F} (hf : HasTemperateGrowth f)
+--     {g : D → E} (hg : HasTemperateGrowth g) :
+--     HasTemperateGrowth fun x => (f x) (g x) := by
+--   refine ⟨?_, ?_⟩
+--   . have := ContDiff.clm_apply (𝕜 := ℝ) (E := D) (F := E) (G := F) (?_ : ContDiff ℝ ⊤ (fun x => (f x).restrictScalars ℝ)) hg.1
+--     . exact this
+--     . change ContDiff ℝ ⊤ fun x => ContinuousLinearMap.restrictScalarsIsometry 𝕜 E F ℝ ℝ (f x)
+--       refine ContDiff.comp ?_ ?_
+--       . exact LinearIsometry.contDiff _
+--       . exact hf.1
+--   -- refine ⟨hf.1.clm_apply hg.1, ?_⟩
+--   intro n
+--   -- Obtain `k, C` for derivatives of `g` and `f`.
+--   have hf_bound := hf.bound_forall_range (n + 1)
+--   have hg_bound := hg.bound_forall_range (n + 1)
+--   rcases hf_bound with ⟨k_f, C_f, ⟨hC_f_nonneg, hC_f⟩⟩
+--   rcases hg_bound with ⟨k_g, C_g, ⟨_, hC_g⟩⟩
+--   use k_f + k_g
+--   use 2 ^ n * C_f * C_g
+--   intro x
+--   refine le_trans (norm_iteratedFDeriv_clm_apply hf.1 hg.1 _ le_top) ?_
+--   simp [mul_assoc]
+--   norm_cast
+--   refine Finset.sum_range_choose_mul_le_pow_two_mul_real ?_
+--   intro i hi
+--   refine le_trans (mul_le_mul (hC_f i hi x) (hC_g (n - i) ?_ x) (norm_nonneg _) ?_) ?_
+--   . simp
+--     exact Nat.sub_lt_succ n i
+--   . simp [hC_f_nonneg]
+--   refine le_of_eq ?_
+--   ring_nf
+
 end ParametricLinear
 
 
@@ -223,6 +263,15 @@ variable {E F G 𝔸 : Type*}
 variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 variable [NormedAddCommGroup F] [NormedSpace ℝ F]
 variable [NormedAddCommGroup G] [NormedSpace ℝ G]
+
+variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
+variable [NormedSpace 𝕜 E] [NormedSpace 𝕜 F] [NormedSpace 𝕜 G]
+variable [NormedAlgebra ℝ 𝕜] [IsScalarTower ℝ 𝕜 G] [SMulCommClass ℝ 𝕜 G]
+
+lemma HasTemperateGrowth.clm' (g : F →L[𝕜] G) {f : E → F} (hf : HasTemperateGrowth f) :
+    HasTemperateGrowth fun x => g (f x) := by
+  change HasTemperateGrowth fun x => g.restrictScalars ℝ (f x)
+  exact clm_apply (hasTemperateGrowth_const g) hf
 
 lemma HasTemperateGrowth.clm (g : F →L[ℝ] G) {f : E → F} (hf : HasTemperateGrowth f) :
     HasTemperateGrowth fun x => g (f x) :=
