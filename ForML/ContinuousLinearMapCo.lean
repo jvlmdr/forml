@@ -45,18 +45,17 @@ lemma Function.update_eq_sum_single {i : ι} {x : ∀ i, M i} {xi : M i} :
     simp [hkj]
   . simp
 
-
-lemma Pi.norm_single_le_norm {i : ι} {u : M i} : ‖Pi.single i u‖ ≤ ‖u‖ := by
-  rw [pi_norm_le_iff_of_nonneg (norm_nonneg _)]
-  intro j
-  by_cases h : j = i <;> simp [h]
-  rw [h]
-  simp
-
--- Uses `NormOneClass.norm_one`.
-lemma Pi.norm_single_one_le_one {𝕜 : Type*} [NormedField 𝕜] {i : ι} : ‖Pi.single (f := fun _ : ι => 𝕜) i 1‖ ≤ 1 := by
-  refine le_trans norm_single_le_norm ?_
-  simp
+@[simp]
+lemma Pi.norm_single_eq {i : ι} {u : M i} : ‖Pi.single i u‖ = ‖u‖ := by
+  refine le_antisymm ?_ ?_
+  . rw [pi_norm_le_iff_of_nonneg (norm_nonneg _)]
+    intro j
+    by_cases h : j = i
+    . rw [h]
+      simp
+    . simp [h]
+  . refine le_trans ?_ (norm_le_pi_norm (Pi.single i u) i)
+    simp
 
 
 namespace ContinuousLinearMap
@@ -80,8 +79,6 @@ def single (i : ι) : M i →L[R] (∀ i, M i) where
 lemma norm_single_le_one {i : ι} : ‖single (R := R) (M := M) i‖ ≤ 1 := by
   rw [op_norm_le_iff zero_le_one]
   simp
-  intro x
-  exact Pi.norm_single_le_norm
 
 
 /-- Analogy of `coprod` for pi types; same as the application of `LinearMap.lsum`. -/

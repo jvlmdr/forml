@@ -125,13 +125,6 @@ lemma HasDerivAt.comp_of_tower (x : 𝕜) {g : 𝕜 → 𝕜'} {f : 𝕜' → F}
   intro m
   simp
 
-lemma HasDerivAt.congr_deriv {f : 𝕜 → F} {f' : F} {g' : F} {x : 𝕜}
-    (hf : HasDerivAt f f' x) (hg : f' = g') :
-    HasDerivAt (fun x => f x) g' x := by
-  rw [hasDerivAt_iff_hasFDerivAt] at hf ⊢
-  refine HasFDerivAt.congr_fderiv hf ?_
-  rw [hg]
-
 lemma deriv.comp_of_tower (x : 𝕜) {g : 𝕜 → 𝕜'} {f : 𝕜' → F}
     (hf : DifferentiableAt 𝕜' f (g x))
     (hg : DifferentiableAt 𝕜 g x) :

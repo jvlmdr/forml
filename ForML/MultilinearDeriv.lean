@@ -22,6 +22,13 @@ lemma HasFDerivAt.clm_apply_const {c : α → F →L[𝕜] G} {v : F} {c' : α �
   refine HasFDerivAt.congr_fderiv (HasFDerivAt.clm_apply hc (hasFDerivAt_const v x)) ?_
   simp
 
+-- -- While this is a one-line proof, it has the convenience of not introducing the second term.
+-- -- Also, `HasFDerivAt.comp` often requires `change` to have specific form `f ∘ g`?
+-- lemma HasFDerivAt.const_clm_apply {c : F →L[𝕜] G} {v : F} {c' : α →L[𝕜] F →L[𝕜] G} {x : α} (hc : HasFDerivAt c c' x) :
+--     HasFDerivAt (fun y => (c y) v) (c'.flip v) x := by
+--   refine HasFDerivAt.congr_fderiv (HasFDerivAt.clm_apply hc (hasFDerivAt_const v x)) ?_
+--   simp
+
 lemma fderiv_clm_apply_const {c : α → F →L[𝕜] G} {v : F} {x : α} (hc : DifferentiableAt 𝕜 c x) :
     fderiv 𝕜 (fun y => (c y) v) x = (fderiv 𝕜 c x).flip v := by
   simp [fderiv_clm_apply hc (differentiableAt_const v)]
@@ -29,6 +36,16 @@ lemma fderiv_clm_apply_const {c : α → F →L[𝕜] G} {v : F} {x : α} (hc : 
 lemma fderiv_clm_apply_comm {c : α → F →L[𝕜] G} {v : F} {x m : α} (hc : DifferentiableAt 𝕜 c x) :
     (fderiv 𝕜 (fun y => (c y) v) x) m = (fderiv 𝕜 c x) m v := by
   simp [fderiv_clm_apply_const hc]
+
+lemma HasFDerivAt.clm_comp_const {c : α → F →L[𝕜] G} {u : E →L[𝕜] F} {c' : α →L[𝕜] F →L[𝕜] G} {x : α} (hc : HasFDerivAt c c' x) :
+    HasFDerivAt (fun y => (c y).comp u) (((ContinuousLinearMap.compL 𝕜 E F G).flip u).comp c') x := by
+  refine HasFDerivAt.congr_fderiv (HasFDerivAt.clm_comp hc (hasFDerivAt_const u x)) ?_
+  rw [ContinuousLinearMap.comp_zero, zero_add]
+
+lemma HasFDerivAt.const_clm_comp {c : F →L[𝕜] G} {u : α → E →L[𝕜] F} {u' : α →L[𝕜] E →L[𝕜] F} {x : α} (hu : HasFDerivAt u u' x) :
+    HasFDerivAt (fun y => (c.comp (u y))) ((ContinuousLinearMap.compL 𝕜 E F G c).comp u') x := by
+  refine HasFDerivAt.congr_fderiv (HasFDerivAt.clm_comp (hasFDerivAt_const c x) hu) ?_
+  rw [ContinuousLinearMap.comp_zero, add_zero]
 
 lemma norm_iteratedFDeriv_clm_const_apply {n : ℕ} {c : F →L[𝕜] G} {u : α → F} {x : α} (hu : ContDiff 𝕜 n u) :
     ‖iteratedFDeriv 𝕜 n (fun y => c (u y)) x‖ ≤ ‖c‖ * ‖iteratedFDeriv 𝕜 n u x‖ := by
@@ -80,7 +97,6 @@ namespace ContinuousMultilinearMap
 section Def
 variable (𝕜 D G)
 
--- Used for
 /--
 The application of a multilinear map as a `ContinuousLinearMap`.
 (Not a bilinear map like `ContinuousLinearMap.apply` due to multilinearity with respect to `x`.)
@@ -97,13 +113,30 @@ end Def
 lemma apply_apply {x : ∀ i, D i} {c : ContinuousMultilinearMap 𝕜 D G} :
     (apply 𝕜 D G x) c = c x := rfl
 
+end ContinuousMultilinearMap  -- namespace
+
+theorem Continuous.continuousMultilinear_apply_const {c : α → ContinuousMultilinearMap 𝕜 D G} {u : ∀ i, D i} (hc : Continuous c) :
+    Continuous (fun y => (c y) u) := by
+  change Continuous (fun y => (ContinuousMultilinearMap.apply _ _ _ u) (c y))
+  refine (ContinuousLinearMap.continuous _).comp hc
+
+theorem Differentiable.continuousMultilinear_apply_const {c : α → ContinuousMultilinearMap 𝕜 D G} {u : ∀ i, D i} (hc : Differentiable 𝕜 c) :
+    Differentiable 𝕜 (fun y => (c y) u) := by
+  change Differentiable 𝕜 (fun y => (ContinuousMultilinearMap.apply _ _ _ u) (c y))
+  exact (ContinuousLinearMap.differentiable _).comp hc
+
+theorem ContDiff.continuousMultilinearMap_apply_const {n : ℕ∞} {c : α → ContinuousMultilinearMap 𝕜 D G} {u : ∀ i, D i} (hc : ContDiff 𝕜 n c) :
+    ContDiff 𝕜 n (fun y => (c y) u) := by
+  change ContDiff 𝕜 n (fun y => (ContinuousMultilinearMap.apply _ _ _ u) (c y))
+  exact (ContinuousLinearMap.contDiff _).comp hc
+
 -- lemma continuous_apply :
 --     Continuous (fun c => apply 𝕜 D G c) := by
 --   -- Don't have `UniformSpace` for `ContinuousMultilinearMap`;
 --   -- can't use `Metric.continuous_iff` or `continuousAt_of_locally_lipschitz`.
+--   -- Try looking at `ContDiff.iteratedFDeriv_right`?
 --   sorry
 
-end ContinuousMultilinearMap  -- namespace
 end Apply
 
 
@@ -164,6 +197,7 @@ end ContinuousMultilinearMap  -- namespace
 section Def
 variable (𝕜 D G)
 
+/-- Like `continuousMultilinearCurryFin0` but for any empty index (not just `Fin 0`). -/
 def continuousMultilinearIsEmptyEquiv : (ContinuousMultilinearMap 𝕜 D G) ≃ₗᵢ[𝕜] G where
   -- Write `toFun` and `invFun` as application of CLM to help `ContinuousLinearEquiv.mk iso.toLinearEquiv`.
   -- toFun c := c 0

@@ -14,7 +14,7 @@ variable [NormedAddCommGroup F] [NormedSpace ℝ F]
 variable [NormedSpace 𝕜 E]
 variable [NormedSpace 𝕜 F] [SMulCommClass ℝ 𝕜 F]
 
-lemma SchwartzMap.iteratedPDeriv_eq_iteratedFDeriv {n : ℕ} {m : Fin n → E} {f : 𝓢(E, F)} {x u w : E} :
+lemma SchwartzMap.iteratedPDeriv_eq_iteratedFDeriv {n : ℕ} {m : Fin n → E} {f : 𝓢(E, F)} {x : E} :
     iteratedPDeriv 𝕜 m f x = iteratedFDeriv ℝ n f x m := by
   induction n generalizing f with
   | zero => simp

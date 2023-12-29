@@ -3,13 +3,18 @@ import Mathlib.Analysis.Distribution.SchwartzSpace
 import Mathlib.Analysis.Fourier.FourierTransform
 import Mathlib.Analysis.Fourier.RiemannLebesgueLemma
 import Mathlib.Analysis.InnerProductSpace.Calculus
+import Mathlib.Analysis.InnerProductSpace.l2Space
 import Mathlib.MeasureTheory.Integral.Bochner
 import Mathlib.MeasureTheory.Integral.FundThmCalculus
 import Mathlib.MeasureTheory.Integral.IntegralEqImproper
+import Mathlib.MeasureTheory.Measure.Haar.InnerProductSpace
 
 import ForML.HasTemperateGrowth
+import ForML.IndexDerivBasic
+import ForML.IndexIntegral
 import ForML.IntegralAgainst
 import ForML.SchwartzDeriv
+import ForML.SchwartzEquiv
 import ForML.SchwartzLp
 import ForML.Trigonometric
 import ForML.Util
@@ -22,14 +27,15 @@ open scoped BigOperators Real
 
 attribute [-simp] ofAdd_neg
 
-variable {𝕜 𝕜' R D E F G : Type*}
+section NoTypeInduction
 
+variable {ι 𝕜 𝕜' R : Type*} {M : ι → Type*} {D E F G : Type*}
 
 section Continuous
 
-variable [NormedAddCommGroup F] [NormedSpace ℝ F] [NormedSpace ℂ F]
+variable [NormedAddCommGroup F] [NormedSpace ℂ F]
 
-/-- Application of `VectorFourier.fourierIntegral_continuous`. -/
+/-- Real version of `VectorFourier.fourierIntegral_continuous`. -/
 lemma Real.fourierIntegral_continuous {f : ℝ → F} (hf : Integrable f) :
     Continuous (Real.fourierIntegral f) :=
   VectorFourier.fourierIntegral_continuous Real.continuous_fourierChar (by exact continuous_mul) hf
@@ -41,31 +47,108 @@ lemma Real.fourierIntegral_continuous {f : ℝ → F} (hf : Integrable f) :
 end Continuous
 
 
--- section Integral
+section VectorDef
 
--- -- variable [NormedAddCommGroup D] [NormedSpace ℝ D]
--- variable [NormedAddCommGroup E] [NormedSpace ℝ E]
--- variable [NormedAddCommGroup F] [NormedSpace ℝ F] -- [NormedSpace ℂ F]
--- -- variable [NormedAddCommGroup G] [NormedSpace ℝ G]
--- variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
+variable [Fintype ι]
+variable [NormedAddCommGroup E] [InnerProductSpace ℝ E]
+variable [NormedAddCommGroup F] [NormedSpace ℂ F]
+variable [MeasurableSpace E] [FiniteDimensional ℝ E] [BorelSpace E]
+noncomputable instance mE : MeasureSpace E := measureSpaceOfInnerProductSpace  -- Might not be required?
+variable [CompleteSpace F]
 
--- lemma SchwartzMap.integralCLM_eq_L1_integral {f : 𝓢(E, F)} [CompleteSpace F] : integralCLM f = L1.integral f.toL1 := by
---   rw [integralCLM_apply]
---   rw [L1.integral_eq_integral]
---   exact integral_congr_ae (coeFn_toL1 f).symm
+/-- Definition of l2 inner product for pi type. -/
+noncomputable def l2innerₛₗ (𝕜 : Type*) [IsROrC 𝕜] {ι : Type*} [Fintype ι] :
+    (ι → 𝕜) →ₗ⋆[𝕜] (ι → 𝕜) →ₗ[𝕜] 𝕜 := innerₛₗ 𝕜 (E := EuclideanSpace 𝕜 ι)
 
--- end Integral
+lemma l2innerₛₗ_apply {𝕜 : Type*} [IsROrC 𝕜] {ι : Type*} [Fintype ι] {x y : ι → 𝕜} :
+    l2innerₛₗ 𝕜 x y = ∑ i, inner (x i) (y i) := rfl
 
+-- noncomputable def RealVectorFourier.fourierIntegral
+--     (f : EuclideanSpace ℝ ι → F) (ξ : EuclideanSpace ℝ ι) : F :=
+--   VectorFourier.fourierIntegral Real.fourierChar volume (innerₛₗ ℝ (E := EuclideanSpace ℝ ι)) f ξ
 
-namespace SchwartzMap
+-- /-- Definition of Fourier transform for finite-dimensional real vectors as Euclidean space. -/
+-- noncomputable def RealVectorFourier.fourierIntegral (f : (ι → ℝ) → F) (ξ : ι → ℝ) : F :=
+--   VectorFourier.fourierIntegral Real.fourierChar volume l2innerₛₗ f ξ
+
+-- /-- Notation for Fourier transform for finite-dimensional real vectors as Euclidean space. -/
+-- scoped[FourierTransform] notation "𝓕ₙ" => RealVectorFourier.fourierIntegral
+
+-- lemma RealVectorFourier.fourierIntegral_apply {f : (ι → ℝ) → F} {ξ : ι → ℝ} :
+--     -- 𝓕ₙ f ξ = ∫ x, Real.fourierChar[-⟪(x : EuclideanSpace ℝ ι), ξ⟫] • f x := by
+--     𝓕ₙ f ξ = ∫ x : ι → ℝ, Real.fourierChar[-∑ i, x i * ξ i] • f x := by
+--   rw [RealVectorFourier.fourierIntegral]
+--   rw [VectorFourier.fourierIntegral]
+--   change ∫ (x : EuclideanSpace ℝ ι), Real.fourierChar (Multiplicative.ofAdd (-innerₛₗ ℝ x ξ)) • f x = _
+--   change _ = ∫ (x : ι → ℝ), Real.fourierChar (Multiplicative.ofAdd _) • f x
+--   rw [← MeasurePreserving.integral_comp' (EuclideanSpace.volume_preserving_measurableEquiv ι)]
+--   rfl
+
+/-- Notation for Fourier transform for real `InnerProductSpace`. -/
+scoped[FourierTransform] notation "𝓕ᵥ" => VectorFourier.fourierIntegral Real.fourierChar volume (innerₛₗ ℝ)
+-- scoped[FourierTransform] notation "𝓕ᵥ[" V "]" => VectorFourier.fourierIntegral Real.fourierChar (volume : Measure V) (innerₛₗ ℝ)
+
+/--
+Notation for Fourier transform for real vectors using l2 inner product.
+Useful for differentiating or integrating wrt one coordinate.
+-/
+scoped[FourierTransform] notation "𝓕ₙ" => VectorFourier.fourierIntegral Real.fourierChar volume (l2innerₛₗ ℝ)
+
+namespace RealVectorFourier
+
+lemma fourierIntegral_l2inner_apply {f : (ι → ℝ) → F} {ξ : ι → ℝ} :
+    𝓕ₙ f ξ = ∫ x, Real.fourierChar[-∑ i, x i * ξ i] • f x := rfl
+
+lemma fourierIntegral_euclidean_eq_fourierIntegral_l2inner {f : EuclideanSpace ℝ ι → F} {ξ : EuclideanSpace ℝ ι} :
+    𝓕ᵥ f ξ = 𝓕ₙ f ξ := by
+  rw [VectorFourier.fourierIntegral]
+  rw [← MeasurePreserving.integral_comp' (EuclideanSpace.volume_preserving_measurableEquiv ι).symm]
+  rfl
+
+lemma fourierIntegral_l2inner_eq_fourierIntegral_euclidean {f : (ι → ℝ) → F} {ξ : ι → ℝ} :
+    𝓕ₙ f ξ = 𝓕ᵥ (f ∘ ⇑(EuclideanSpace.equiv ι ℝ)) ξ := by
+  rw [VectorFourier.fourierIntegral]
+  rw [← MeasurePreserving.integral_comp' (EuclideanSpace.volume_preserving_measurableEquiv ι)]
+  rfl
+
+lemma fourierIntegral_eq_fourierIntegral_euclidean_ofOrthonormalBasis (v : OrthonormalBasis ι ℝ E) {f : E → F} {ξ : E} :
+    𝓕ᵥ f ξ = 𝓕ᵥ (f ∘ ⇑v.repr.symm) (v.repr ξ) := by
+  rw [VectorFourier.fourierIntegral]
+  rw [VectorFourier.fourierIntegral]
+  rw [← MeasurePreserving.integral_comp' (v.measurePreserving_measurableEquiv)]
+  conv =>
+    rhs; arg 2; intro x
+    change Real.fourierChar[-innerₛₗ ℝ (v.repr x) (v.repr ξ)] • f (v.repr.symm (v.repr x))
+    simp
+
+lemma fourierIntegral_eq_fourierIntegral_euclidean_stdOrthonormalBasis {f : E → F} {ξ : E} :
+    𝓕ᵥ f ξ = 𝓕ᵥ (f ∘ ⇑(stdOrthonormalBasis ℝ E).repr.symm) ((stdOrthonormalBasis ℝ E).repr ξ) :=
+  fourierIntegral_eq_fourierIntegral_euclidean_ofOrthonormalBasis (stdOrthonormalBasis ℝ E)
+
+lemma fourierIntegral_eq_fourierIntegral_l2inner_ofOrthonormalBasis (v : OrthonormalBasis ι ℝ E) {f : E → F} {ξ : E} :
+    𝓕ᵥ f ξ = 𝓕ₙ (f ∘ ⇑v.repr.symm) (v.repr ξ) := by
+  rw [fourierIntegral_eq_fourierIntegral_euclidean_ofOrthonormalBasis v]
+  rw [fourierIntegral_euclidean_eq_fourierIntegral_l2inner]
+
+lemma fourierIntegral_eq_fourierIntegral_l2inner_stdOrthonormalBasis {f : E → F} {ξ : E} :
+    𝓕ᵥ f ξ = 𝓕ₙ (f ∘ ⇑(stdOrthonormalBasis ℝ E).repr.symm) ((stdOrthonormalBasis ℝ E).repr ξ) :=
+  fourierIntegral_eq_fourierIntegral_l2inner_ofOrthonormalBasis (stdOrthonormalBasis ℝ E)
+
+end RealVectorFourier  -- namespace
+
+end VectorDef
+
 
 section Tendsto
 
 variable [NormedAddCommGroup E] [NormedSpace ℝ E]
 variable [NormedAddCommGroup F] [NormedSpace ℝ F]
 
+namespace SchwartzMap
+
 -- TODO: Generalize to vector space `E` using cocompact filter?
-lemma tendsto_atTop_zero_real (f : 𝓢(ℝ, F)) : Filter.Tendsto (fun x => f x) Filter.atTop (nhds 0) := by
+/-- A `SchwartzMap` on `ℝ` goes to zero at infinity. -/
+theorem tendsto_atTop_zero_real (f : 𝓢(ℝ, F)) : Filter.Tendsto (fun x => f x) Filter.atTop (nhds 0) := by
   rw [tendsto_zero_iff_norm_tendsto_zero]
   rcases f.decay₁ 1 0 with ⟨C, hC⟩
   simp at hC
@@ -85,24 +168,50 @@ lemma tendsto_atTop_zero_real (f : 𝓢(ℝ, F)) : Filter.Tendsto (fun x => f x)
     exact hC x
 
 /-- Maps `f` to `x ↦ f (-x)`. -/
-def comp_neg : 𝓢(E, F) →L[ℝ] 𝓢(E, F) := compCLM ℝ (Function.hasTemperateGrowth_clm (-ContinuousLinearMap.id ℝ E)) ⟨1, 1, by simp⟩
+def compNegEquiv : 𝓢(E, F) ≃L[ℝ] 𝓢(E, F) := compEquiv (LinearIsometryEquiv.neg ℝ (E := E))
 
-lemma comp_neg_apply {f : 𝓢(E, F)} {x : E} : comp_neg f x = f (-x) := rfl
+@[simp]
+lemma compNegEquiv_apply {f : 𝓢(E, F)} {x : E} : compNegEquiv f x = f (-x) := rfl
+
+/-- A `SchwartzMap` on `ℝ` goes to zero at negative infinity. -/
+theorem tendsto_atBot_zero_real (f : 𝓢(ℝ, F)) : Filter.Tendsto (fun x => f x) Filter.atBot (nhds 0) := by
+  conv => arg 1; intro x; rw [← neg_neg x]; rw [← compNegEquiv_apply]
+  exact (tendsto_atTop_zero_real (compNegEquiv f)).comp Filter.tendsto_neg_atBot_atTop
+
+end SchwartzMap  -- namespace
 
 end Tendsto
 
 
 section Fourier
 
-variable [NormedAddCommGroup D] [NormedSpace ℝ D]
-variable [NormedAddCommGroup E] [hE : InnerProductSpace ℝ E]
-variable [NormedAddCommGroup F] [NormedSpace ℂ F]  -- Note: `NormedSpace ℝ f` interferes through `complexToReal`
-variable [NormedAddCommGroup G] [NormedSpace ℝ G]
+variable [DecidableEq ι] [Fintype ι]
+variable [NontriviallyNormedField 𝕜]
+variable [∀ i, NormedAddCommGroup (M i)] [∀ i, NormedSpace ℝ (M i)]
 
-variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
+variable [NormedAddCommGroup D] [NormedSpace ℝ D]
+-- Note: `NormedSpace ℝ E` provided by `InnerProductSpace.Core.toNormedSpace`.
+variable [NormedAddCommGroup E] [InnerProductSpace ℝ E]
+variable [NormedAddCommGroup E'] [InnerProductSpace ℝ E']
+-- Note: `NormedSpace ℝ F` provided by `NormedSpace.complexToReal`.
+variable [NormedAddCommGroup F] [NormedSpace ℂ F] [NormedSpace 𝕜 F]
+variable [NormedAddCommGroup G] [NormedSpace ℝ G]
+-- Note: `MeasureSpace E` provided by `measureSpaceOfInnerProductSpace`.
+variable [MeasurableSpace E] [FiniteDimensional ℝ E] [BorelSpace E]
+variable [MeasurableSpace E'] [FiniteDimensional ℝ E'] [BorelSpace E']
 variable [CompleteSpace F]
 
-instance : NormedSpace ℝ E := hE.toNormedSpace  -- Type system can't find this?
+section Explicit
+variable (M)
+
+lemma Function.hasTemperateGrowth_single (i : ι) :
+    HasTemperateGrowth (fun u : M i => Pi.single i u) := by
+  change HasTemperateGrowth (fun u : M i => ContinuousLinearMap.single (R := ℝ) i u)
+  exact hasTemperateGrowth_clm _
+
+end Explicit
+
+namespace SchwartzMap
 
 -- Prove that the Fourier transform of a Schwartz function is a Schwartz function
 -- in order to define the Fourier transform of a tempered distribution.
@@ -115,11 +224,6 @@ instance : NormedSpace ℝ E := hE.toNormedSpace  -- Type system can't find this
 
 -- Next step is to obtain the derivative of the Fourier transform
 -- and the Fourier transform of the derivative.
-
-scoped[FourierTransform] notation "𝓕ᵥ" => VectorFourier.fourierIntegral Real.fourierChar volume (innerₛₗ ℝ)
-
-lemma VectorFourier.realInnerVolume_apply {f : E → F} {ξ : E} :
-    𝓕ᵥ (fun x => f x) ξ = ∫ x, Real.fourierChar[-⟪x, ξ⟫] • f x := rfl
 
 /-- The real Fourier integrand as a Schwartz function in one variable. -/
 noncomputable def realFourierIntegrand (ξ : ℝ) : 𝓢(ℝ, F) →L[ℝ] 𝓢(ℝ, F) :=
@@ -137,6 +241,89 @@ noncomputable def vectorFourierIntegrand (ξ : E) : 𝓢(E, F) →L[ℝ] 𝓢(E,
 
 lemma vectorFourierIntegrand_apply {f : 𝓢(E, F)} {ξ x : E} :
     vectorFourierIntegrand ξ f x = Real.fourierChar[-⟪x, ξ⟫] • f x := rfl
+
+-- TODO: Rename "realVectorFourier" to better reflect pi type with l2 inner product
+-- ("vectorFourier" already assumes E is a real `InnerProductSpace`).
+-- Ideas: l2fourier, l2piFourier, l2realFourier, realL2Fourier, l2vectorFourier, piRealFourier
+
+/-- The real vector Fourier integrand (using pi type) as a Schwartz function in one variable. -/
+noncomputable def realVectorFourierIntegrand (ξ : ι → ℝ) : 𝓢(ι → ℝ, F) →L[ℝ] 𝓢(ι → ℝ, F) :=
+  hasTemperateGrowth_smul (Real.hasTemperateGrowth_l2inner_const ξ).neg.realFourierChar
+
+lemma realVectorFourierIntegrand_apply {f : 𝓢(ι → ℝ, F)} {ξ x : ι → ℝ} :
+    realVectorFourierIntegrand ξ f x = Real.fourierChar[-∑ i, x i * ξ i] • f x := rfl
+
+lemma realVectorFourierIntegrand_eq_vectorFourierIntegrand_euclidean {f : 𝓢(ι → ℝ, F)} {ξ : ι → ℝ} :
+    realVectorFourierIntegrand ξ f =
+    compEquiv
+      (EuclideanSpace.equiv ι ℝ).symm
+      (vectorFourierIntegrand (E := EuclideanSpace ℝ ι) ξ (compEquiv (EuclideanSpace.equiv ι ℝ) f)) := rfl
+
+lemma realVectorFourierIntegrand_apply_vectorFourierIntegrand_euclidean {f : 𝓢(ι → ℝ, F)} {ξ x : ι → ℝ} :
+    realVectorFourierIntegrand ξ f x =
+    vectorFourierIntegrand (E := EuclideanSpace ℝ ι) ξ (compEquiv (EuclideanSpace.equiv ι ℝ) f) x := rfl
+
+lemma vectorFourierIntegrand_euclidean_eq_realVectorFourierIntegrand {f : 𝓢(EuclideanSpace ℝ ι, F)} {ξ : EuclideanSpace ℝ ι} :
+    vectorFourierIntegrand ξ f =
+    compEquiv (EuclideanSpace.equiv ι ℝ)
+      (realVectorFourierIntegrand ξ (compEquiv (EuclideanSpace.equiv ι ℝ).symm f)) := rfl
+
+lemma vectorFourierIntegrand_euclidean_apply_realVectorFourierIntegrand {f : 𝓢(EuclideanSpace ℝ ι, F)} {ξ x : EuclideanSpace ℝ ι} :
+    vectorFourierIntegrand ξ f x =
+    realVectorFourierIntegrand ξ (compEquiv (EuclideanSpace.equiv ι ℝ).symm f) x := rfl
+
+lemma vectorFourierIntegrand_compEquiv_symm_apply (e : E ≃ₗᵢ[ℝ] E') {f : 𝓢(E, F)} {ξ x : E} :
+    vectorFourierIntegrand ξ f x =
+    vectorFourierIntegrand (e ξ) (compEquiv e.symm.toContinuousLinearEquiv f) (e x) := by
+  simp [vectorFourierIntegrand_apply]
+
+lemma vectorFourierIntegrand_compEquiv_symm (e : E ≃ₗᵢ[ℝ] E') {f : 𝓢(E, F)} {ξ : E} :
+    vectorFourierIntegrand ξ f = compEquiv e.toContinuousLinearEquiv
+      (vectorFourierIntegrand (e ξ) (compEquiv e.symm.toContinuousLinearEquiv f)) := by
+  ext x
+  simp
+  exact vectorFourierIntegrand_compEquiv_symm_apply e
+
+lemma vectorFourierIntegrand_compEquiv_apply (e : E' ≃ₗᵢ[ℝ] E) {f : 𝓢(E, F)} {ξ x : E} :
+    vectorFourierIntegrand ξ f x =
+    vectorFourierIntegrand (e.symm ξ) (compEquiv e.toContinuousLinearEquiv f) (e.symm x) := by
+  simp [vectorFourierIntegrand_apply]
+
+lemma vectorFourierIntegrand_compEquiv (e : E' ≃ₗᵢ[ℝ] E) {f : 𝓢(E, F)} {ξ : E} :
+    vectorFourierIntegrand ξ f = compEquiv e.symm.toContinuousLinearEquiv
+      (vectorFourierIntegrand (e.symm ξ) (compEquiv e.toContinuousLinearEquiv f)) := by
+  ext x
+  simp
+  exact vectorFourierIntegrand_compEquiv_apply e
+
+
+/-- Express the Fourier integrand for a real `InnerProductSpace` using pi type. -/
+lemma vectorFourierIntegrand_apply_realVectorFourierIntegrand_ofOrthonormalBasis (v : OrthonormalBasis ι ℝ E)
+    {f : 𝓢(E, F)} {ξ x : E} :
+    vectorFourierIntegrand ξ f x =
+    realVectorFourierIntegrand
+      (v.repr ξ)
+      (compEquiv (v.repr.toContinuousLinearEquiv.trans (EuclideanSpace.equiv ι ℝ)).symm f)
+      (v.repr x) := by
+  simp [vectorFourierIntegrand_apply, realVectorFourierIntegrand_apply]
+  congr
+  . rw [← v.repr.inner_map_map]
+    rfl
+  . rw [ContinuousLinearEquiv.eq_symm_apply]
+    rfl
+
+/-- Express the Fourier integrand for a real `InnerProductSpace` using pi type. -/
+lemma vectorFourierIntegrand_eq_realVectorFourierIntegrand_ofOrthonormalBasis (v : OrthonormalBasis ι ℝ E)
+    {f : 𝓢(E, F)} {ξ : E} :
+    vectorFourierIntegrand ξ f = compEquiv (v.repr.toContinuousLinearEquiv.trans (EuclideanSpace.equiv ι ℝ))
+      (realVectorFourierIntegrand
+        (v.repr ξ)
+        (compEquiv (v.repr.toContinuousLinearEquiv.trans (EuclideanSpace.equiv ι ℝ)).symm f)) := by
+  ext x
+  simp
+  rw [vectorFourierIntegrand_apply_realVectorFourierIntegrand_ofOrthonormalBasis v]
+  rfl
+
 
 lemma vectorFourierIntegrand_smul_apply {f : 𝓢(E, F)} {ξ x : E} {c : ℂ} :
     c • vectorFourierIntegrand ξ f x = Real.fourierChar[-⟪x, ξ⟫] • (c • f) x := by
@@ -178,14 +365,14 @@ lemma innerSL_smul_vectorFourierIntegrand_comm {f : 𝓢(E, F)} {ξ : E} :
   simp [innerSL_smul_apply, vectorFourierIntegrand_apply]
   rw [smul_comm]
 
--- Give hint to find instance for `(c : ℂ) • f` in `fderivCLM_vectorFourierIntegrand`.
--- noncomputable instance : Module ℂ (𝓢(E, F) →L[ℝ] 𝓢(E, E →L[ℝ] F)) := ContinuousLinearMap.module
-instance {D E F G : Type*}
-    [NormedAddCommGroup D] [NormedSpace ℝ D]
-    [NormedAddCommGroup E] [NormedSpace ℝ E]
-    [NormedAddCommGroup F] [NormedSpace ℝ F]
-    [NormedAddCommGroup G] [NormedSpace ℝ G] [NormedSpace ℂ G] :
-    Module ℂ (𝓢(D, E) →L[ℝ] 𝓢(F, G)) := ContinuousLinearMap.module
+-- -- Give hint to find instance for `(c : ℂ) • f` in `fderivCLM_vectorFourierIntegrand`.
+-- -- noncomputable instance : Module ℂ (𝓢(E, F) →L[ℝ] 𝓢(E, E →L[ℝ] F)) := ContinuousLinearMap.module
+-- instance {D E F G : Type*}
+--     [NormedAddCommGroup D] [NormedSpace ℝ D]
+--     [NormedAddCommGroup E] [NormedSpace ℝ E]
+--     [NormedAddCommGroup F] [NormedSpace ℝ F]
+--     [NormedAddCommGroup G] [NormedSpace ℝ G] [NormedSpace ℂ G] :
+--     Module ℂ (𝓢(D, E) →L[ℝ] 𝓢(F, G)) := ContinuousLinearMap.module
 
 /--
 The Fréchet derivative of `vectorFourierIntegrand` with respect to `ξ`; Schwartz in `x`, linear in `dξ`.
@@ -267,7 +454,7 @@ lemma norm_fderivCLM_vectorFourierIntegrand {f : 𝓢(E, F)} {ξ x : E} :
   simp [norm_smul]
   ring_nf
 
--- Type system needs help?
+-- Need help for `Continuous.aestronglyMeasurable` in `hasFDerivAt_integral_vectorFourierIntegrand`.
 instance {α : Type*} [TopologicalSpace α] : SecondCountableTopologyEither E α := secondCountableTopologyEither_of_left E α
 
 /-- The derivative of the Fourier integral. -/
@@ -406,7 +593,7 @@ lemma intervalIntegral_integrand_deriv_sub_smul_integrand {f : 𝓢(ℝ, F)} {ξ
 
 /-- The Fourier integral of the derivative of a Schwartz function on ℝ. -/
 lemma realFourierIntegral_deriv {f : 𝓢(ℝ, F)} {ξ : ℝ} :
-    𝓕 (fun x => deriv f x) ξ = (2 * π * I * ξ) • 𝓕 (fun x => f x) ξ := by
+    𝓕 (fun x => deriv (fun y => f y) x) ξ = (2 * π * I * ξ) • 𝓕 (fun x => f x) ξ := by
   -- Replace `fourierChar[_]` with `realFourierIntegrand`; easy to show integrable and differentiable.
   change ∫ x, realFourierIntegrand ξ (derivCLM ℝ f) x = (2 * π * I * ξ) • ∫ x : ℝ, realFourierIntegrand ξ f x
   rw [← sub_eq_zero]
@@ -435,19 +622,167 @@ lemma realFourierIntegral_deriv {f : 𝓢(ℝ, F)} {ξ : ℝ} :
     exact tendsto_atTop_zero_real (realFourierIntegrand ξ f)
   . change Filter.Tendsto ((fun x => realFourierIntegrand ξ f (-x)) ∘ (fun n => n : ℕ → ℝ)) Filter.atTop (nhds 0)
     refine Filter.Tendsto.comp ?_ tendsto_nat_cast_atTop_atTop
-    simp_rw [← comp_neg_apply]
-    exact tendsto_atTop_zero_real (comp_neg (realFourierIntegrand ξ f))
+    simp_rw [← compNegEquiv_apply]
+    exact tendsto_atTop_zero_real (compNegEquiv (realFourierIntegrand ξ f))
 
 
-section Induction
+-- Define some compositions that may be useful for taking partial derivative.
+section CompCLM
+
+variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+
+-- Simpler case than `compAddSingleCLM`; just translation.
+def compConstAddCLM (b : E) : 𝓢(E, F) →L[ℝ] 𝓢(E, F) :=
+  compCLM ℝ (g := fun x => b + x)
+    (Function.hasTemperateGrowth_id'.const_add b)
+    (by
+      refine ⟨1, 1 + ‖b‖, ?_⟩
+      intro y
+      simp [add_mul, mul_add, ← add_assoc]
+      refine le_trans (norm_le_add_norm_add y b) ?_
+      rw [add_comm y]
+      rw [add_comm ‖b + y‖ ‖b‖]
+      refine le_add_of_le_of_nonneg ?_ (mul_nonneg ?_ ?_) <;> simp)
+
+lemma compConstAddCLM_apply {b u : ∀ i, M i} {f : 𝓢((i : ι) → M i, F)} :
+    compConstAddCLM b f u = f (b + u) := rfl
+
+-- def compSMulRightCLM {v : E} (hv : ‖v‖ ≠ 0) : 𝓢(E, F) →L[ℝ] 𝓢(ℝ, F) :=
+--   compCLM ℝ (g := fun x => x • v)
+--     (Function.hasTemperateGrowth_id'.smul_const v)
+--     (by
+--       refine ⟨1, ‖v‖⁻¹, ?_⟩
+--       intro x
+--       simp
+--       rw [inv_mul_eq_div]
+--       rw [le_div_iff (lt_of_le_of_ne' (norm_nonneg _) hv)]
+--       simp [norm_smul])
+
+-- lemma compSMulRightCLM_apply {v : E} (hv : ‖v‖ ≠ 0) {f : 𝓢(E, F)} {x : ℝ} :
+--     compSMulRightCLM hv f x = f (x • v) := rfl
+
+end CompCLM
+
+def compSingleCLM (i : ι) : 𝓢((i : ι) → M i, F) →L[ℝ] 𝓢(M i, F) :=
+  compCLM ℝ (g := fun x => Pi.single i x)
+    (Function.hasTemperateGrowth_clm (ContinuousLinearMap.single (R := ℝ) (M := M) i))
+    ⟨1, 1, fun x => by simp⟩
+
+lemma compSingleCLM_apply {i : ι} {f : 𝓢((i : ι) → M i, F)} {u : M i} :
+    compSingleCLM i f u = f (Pi.single i u) := rfl
+
+-- TODO: Not sure whether it's useful to have f as a function of `EuclideanSpace`...
+-- Note that it changes the definition of norm compared to pi.
+
+lemma realVectorFourierIntegral_pderivCLM_single {i : ι} {f : 𝓢(ι → ℝ, F)} {ξ : ι → ℝ} :
+    𝓕ₙ (pderivCLM ℝ (Pi.single i 1) f) ξ = (2 * π * I * ξ i) • 𝓕ₙ f ξ := by
+  rw [RealVectorFourier.fourierIntegral_l2inner_apply]
+  -- Break up the integral.
+  rw [integral_piSplitAt_right i]
+  swap
+  . simp_rw [← realVectorFourierIntegrand_apply]  -- TODO: Extract to lemma without rw?
+    exact integrable _
+  -- Split the sum.
+  have h_mem (j) : j ∈ Finset.univ \ {i} ↔ j ≠ i := by simp
+  conv => lhs; simp only [Finset.sum_eq_add_sum_diff_singleton (Finset.mem_univ i)]
+  simp only [dite_true, Finset.sum_subtype _ h_mem]
+  simp [Finset.sum_ite]
+  conv => lhs; arg 2; intro x; arg 2; intro u; lhs; rw [← smul_eq_mul]
+  simp only [smul_assoc]
+  simp only [integral_smul]
+
+  simp only [← deriv_comp_update (f.differentiableAt)]
+  simp only [Equiv.piSplitAt_symm_apply (j := i), dite_true]
+  simp only [Function.update_piSplitAt_symm]
+  conv =>
+    lhs; arg 2; intro x; rhs
+    -- Express as the derivative of a Schwartz function.
+    conv =>
+      arg 2; intro y; rhs; arg 1; intro u
+      rw [← Equiv.piSplitAt_symm_zero_add_single]
+      rw [← compConstAddCLM_apply]
+      rw [← compSingleCLM_apply]
+    -- Rewrite using theorem for scalar Fourier transform.
+    rw [← Real.fourierIntegral_def]
+    rw [realFourierIntegral_deriv]
+
+  simp only [compConstAddCLM_apply, compSingleCLM_apply]
+  conv => lhs; arg 2; intro x; rw [smul_comm]
+  rw [integral_smul]
+  refine congrArg _ ?_  -- More idiomatic way to do this?
+  simp only [Real.fourierIntegral_def]
+  simp only [← integral_smul]
+  simp only [smul_smul]
+
+  rw [RealVectorFourier.fourierIntegral_l2inner_apply]
+  rw [integral_piSplitAt_right i]
+  swap
+  . simp only [← realVectorFourierIntegrand_apply]
+    exact integrable _
+  refine congrArg _ ?_
+  ext x
+  refine congrArg _ ?_
+  ext u
+  congr
+  . rw [Finset.sum_eq_add_sum_diff_singleton (Finset.mem_univ i)]
+    simp only [Finset.sum_subtype _ h_mem]
+    simp [Finset.sum_ite]
+  . rw [Equiv.piSplitAt_symm_zero_add_single]
+
+
+lemma vectorFourierIntegral_pderivCLM_single_euclidean {i : ι} {f : 𝓢(EuclideanSpace ℝ ι, F)} {ξ : EuclideanSpace ℝ ι} :
+    𝓕ᵥ (pderivCLM ℝ (EuclideanSpace.single i 1) f) ξ = (2 * π * I * ξ i) • 𝓕ᵥ f ξ := by
+  rw [RealVectorFourier.fourierIntegral_euclidean_eq_fourierIntegral_l2inner]
+  rw [RealVectorFourier.fourierIntegral_euclidean_eq_fourierIntegral_l2inner]
+  have := realVectorFourierIntegral_pderivCLM_single (i := i)
+    (f := compEquiv (EuclideanSpace.equiv ι ℝ).symm f) (ξ := (EuclideanSpace.equiv ι ℝ) ξ)
+  -- Use equivalence to modify derivative as well.
+  conv at this =>
+    lhs; arg 4; intro x
+    simp
+    conv => arg 1; arg 2; intro y; simp
+    change fderiv ℝ (f ∘ ⇑(EuclideanSpace.equiv ι ℝ).symm) x (Pi.single i 1)
+    rw [ContinuousLinearEquiv.comp_right_fderiv]
+    rw [ContinuousLinearMap.comp_apply]
+  exact this
+
+lemma vectorFourierIntegral_pderivCLM_single_ofOrthonormalBasis (v : OrthonormalBasis ι ℝ E) {i : ι} {f : 𝓢(E, F)} {ξ : E} :
+    𝓕ᵥ (pderivCLM ℝ (v.repr.symm (Pi.single i 1)) f) ξ = (2 * π * I * (v.repr ξ) i) • 𝓕ᵥ f ξ := by
+  rw [RealVectorFourier.fourierIntegral_eq_fourierIntegral_euclidean_ofOrthonormalBasis v]
+  rw [RealVectorFourier.fourierIntegral_eq_fourierIntegral_euclidean_ofOrthonormalBasis v]
+  have := vectorFourierIntegral_pderivCLM_single_euclidean (i := i)
+    (f := compEquiv v.repr.symm f) (ξ := v.repr ξ)
+  conv at this =>
+    lhs; arg 4; intro x
+    simp
+    conv => arg 1; arg 2; intro y; simp
+    change fderiv ℝ (f ∘ ⇑v.repr.toContinuousLinearEquiv.symm) x (EuclideanSpace.single i 1)
+    rw [ContinuousLinearEquiv.comp_right_fderiv]
+    simp
+  exact this
+
+-- TODO: Implement directional derivative (not just canonical directions).
+-- Use `proj` and `ker`?
+
+end SchwartzMap  -- namespace
+
+end Fourier
+
+end NoTypeInduction
+
+
+-- TODO: Rewrite avoiding induction over type.
+section TypeInduction
 
 universe u
 variable {E F : Type u}  -- Ensure that `E →L[ℝ] F` is in the same universe as `F`.
 
-variable [NormedAddCommGroup E] [hE : InnerProductSpace ℝ E]
+variable [NormedAddCommGroup E] [InnerProductSpace ℝ E]
 variable [NormedAddCommGroup F] [NormedSpace ℂ F]
-variable [mE : MeasureSpace E] [FiniteDimensional ℝ E] [BorelSpace E] [mE.volume.IsAddHaarMeasure]
+variable [MeasurableSpace E] [FiniteDimensional ℝ E] [BorelSpace E]
 variable [CompleteSpace F]
+
+namespace SchwartzMap
 
 /-- The Fourier integral of a Schwartz map is smooth. -/
 theorem contDiff_integralCLM_vectorFourierIntegrand {f : 𝓢(E, F)} : ContDiff ℝ ⊤ fun ξ => integralCLM (vectorFourierIntegrand ξ f) := by
@@ -472,7 +807,7 @@ theorem contDiff_fourierIntegral {f : 𝓢(E, F)} : ContDiff ℝ ⊤ fun ξ => �
   simp_rw [← integralCLM_apply]
   exact contDiff_integralCLM_vectorFourierIntegrand
 
-lemma norm_iteratedFDeriv_integralCLM_fourierIntegrand_le {n : ℕ} {f : 𝓢(E, F)} :
+lemma norm_iteratedFDeriv_integralCLM_fourierIntegrand_le {n : ℕ} {f : 𝓢(E, F)} {ξ : E} :
     ‖iteratedFDeriv ℝ n (fun ξ => integralCLM (vectorFourierIntegrand ξ f)) ξ‖ ≤ (2 * π) ^ n * ∫ x, ‖x‖ ^ n * ‖f x‖ := by
   induction n generalizing F with
   | zero =>
@@ -515,6 +850,21 @@ lemma norm_iteratedFDeriv_integralCLM_fourierIntegrand_le {n : ℕ} {f : 𝓢(E,
     exact norm_inner_le_norm x y
 
 /-- The Fourier integral of a Schwartz function as a ContinuousLinearMap. -/
+noncomputable def realFourierIntegralCLM : 𝓢(ℝ, F) →L[ℝ] 𝓢(ℝ, F) :=
+  mkCLM (fun f ξ => ∫ x, Real.fourierChar[-(x * ξ)] • f x)
+    (fun φ θ ξ => by
+      simp [← realFourierIntegrand_apply]
+      rw [integral_add (integrable _) (integrable _)])
+    (fun c φ ξ => by
+      simp [smul_comm _ c]
+      rw [integral_smul])
+    (fun φ => sorry)
+    (fun m => by
+      simp only [← realFourierIntegrand_apply]
+      -- simp_rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv]
+      sorry)
+
+/-- The Fourier integral of a Schwartz function as a ContinuousLinearMap. -/
 noncomputable def vectorFourierIntegralCLM {r : ℕ} [hr : Fact (FiniteDimensional.finrank ℝ E < r)] : 𝓢(E, F) →L[ℝ] 𝓢(E, F) :=
   mkCLM (fun f ξ => ∫ x, Real.fourierChar[-⟪x, ξ⟫] • f x)
     (fun φ θ ξ => by
@@ -544,6 +894,6 @@ noncomputable def vectorFourierIntegralCLM {r : ℕ} [hr : Fact (FiniteDimension
       refine le_trans (mul_le_mul_of_nonneg_left norm_iteratedFDeriv_integralCLM_fourierIntegrand_le (by simp)) ?_
       sorry)
 
-end Induction
-end Fourier
 end SchwartzMap  -- namespace
+
+end TypeInduction

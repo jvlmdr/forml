@@ -7,7 +7,7 @@ import ForML.HasTemperateGrowth
 import ForML.Util
 
 open Complex
-open scoped Real FourierTransform RealInnerProductSpace
+open scoped BigOperators Real FourierTransform RealInnerProductSpace
 
 section IteratedDeriv
 -- Some useful lemmata for `iteratedDeriv` that avoid passing through `iteratedFDeriv`.
@@ -225,6 +225,11 @@ lemma Function.HasTemperateGrowth.const_inner (v : F) {f : E → F} (hf : HasTem
 lemma Real.hasTemperateGrowth_inner_const (w : F) :
     Function.HasTemperateGrowth fun v : F => ⟪v, w⟫ :=
   Function.HasTemperateGrowth.inner Function.hasTemperateGrowth_id (Function.hasTemperateGrowth_const w)
+
+lemma Real.hasTemperateGrowth_l2inner_const {ι : Type*} [Fintype ι] (w : ι → ℝ) :
+    Function.HasTemperateGrowth fun v : ι → ℝ => ∑ i : ι, v i * w i := by
+  change Function.HasTemperateGrowth ((fun v : EuclideanSpace ℝ ι => inner v w) ∘ ⇑(EuclideanSpace.equiv ι ℝ).symm.toContinuousLinearMap)
+  exact (Real.hasTemperateGrowth_inner_const _).comp (Function.hasTemperateGrowth_clm _)
 
 lemma Real.hasTemperateGrowth_realFourierChar_inner_const (w : F) :
     Function.HasTemperateGrowth fun v : F => fourierChar[⟪v, w⟫] :=

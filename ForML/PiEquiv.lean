@@ -32,6 +32,31 @@ lemma Finset.sup_filter_eq_sup_univ_subtype_coe [Fintype ι]
 
 section PiSplitAt
 
+lemma Equiv.piSplitAt_const {E : Type*} (i : ι) :
+    Equiv.piSplitAt i (fun _ => E) = Equiv.funSplitAt i E := rfl
+
+lemma Function.update_piSplitAt_symm {i : ι} {a u : α i} {x : ∀ j : {j // j ≠ i}, α j} :
+    Function.update ((Equiv.piSplitAt i α).symm (a, x)) i u = (Equiv.piSplitAt i α).symm (u, x) := by
+  ext j
+  by_cases h : j = i
+  . rw [h]; simp
+  . simp [h]
+
+-- lemma Function.update_eq_piSplitAt_add_single {i : ι} {x : ∀ i, α i} {u : α i} :
+--     Function.update x i u = (Equiv.piSplitAt i α).symm (0, (Equiv.piSplitAt i α x).2) + Pi.single i u := by
+--   funext j
+--   by_cases h : j = i
+--   . rw [h]; simp
+--   . simp [h]
+
+lemma Equiv.piSplitAt_symm_zero_add_single {i : ι} {u : α i} {x : ∀ j : {j // j ≠ i}, α j} :
+    (Equiv.piSplitAt i α).symm (0, x) + Pi.single i u =
+    (Equiv.piSplitAt i α).symm (u, x) := by
+  ext j
+  by_cases h : j = i
+  . rw [h]; simp
+  . simp [h]
+
 section Def
 variable (𝕜 i α)
 
@@ -202,9 +227,15 @@ section PiSplitAt
 section Def
 variable (α i)
 
-/-- Applies `MeasurableEquiv.piEquivPiSubtypeProd` to obtain measure-preserving equivalence for `piSplitAt`. -/
+/-- Applies `MeasurableEquiv.piEquivPiSubtypeProd` to obtain measure-preserving equivalence for `Equiv.piSplitAt`. -/
 def piSplitAt [∀ j, MeasurableSpace (α j)] : (∀ j, α j) ≃ᵐ α i × (∀ j : { j // j ≠ i }, α j) :=
   trans (piEquivPiSubtypeProd (fun i => α i) (fun j => j = i)) (prodCongr (piUnique _) (refl _))
+
+-- TODO: Is there a more idiomatic way to define the above?
+-- Would be nice to have definitional equality for application of symm?
+example [∀ j, MeasurableSpace (α j)] {x : ∀ j, α j} : piSplitAt α i x = Equiv.piSplitAt i α x := rfl
+-- example [∀ j, MeasurableSpace (α j)] {x : α i × (∀ j : {j // j ≠ i }, α j)} :
+--     (piSplitAt α i).symm x = (Equiv.piSplitAt i α).symm x := rfl
 
 end Def
 
@@ -215,6 +246,16 @@ lemma piSplitAt_eq_trans [∀ j, MeasurableSpace (α j)] :
 -- Provide this since the definition uses `MeasurableEquiv.trans`.
 lemma piSplitAt_toEquiv [∀ j, MeasurableSpace (α j)] : (piSplitAt α i).toEquiv = Equiv.piSplitAt i α :=
   Equiv.ext (fun _ => rfl)
+
+@[simp]
+lemma piSplitAt_apply [∀ j, MeasurableSpace (α j)] {x : ∀ j, α j} :
+    piSplitAt α i x = Equiv.piSplitAt i α x := rfl
+
+@[simp]
+lemma piSplitAt_symm_apply [∀ j, MeasurableSpace (α j)] {x : α i × (∀ j : {j // j ≠ i }, α j)} :
+    (piSplitAt α i).symm x = (Equiv.piSplitAt i α).symm x := by
+  change (piSplitAt α i).toEquiv.symm x = (Equiv.piSplitAt i α).symm x
+  rw [piSplitAt_toEquiv]
 
 section Preserving
 variable [Fintype ι]
