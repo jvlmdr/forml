@@ -2,3 +2,5 @@
 /lake-packages/*
 lakefile.olean
 .*
+*.backup
+dump_*
