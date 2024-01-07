@@ -69,6 +69,11 @@ lemma multichoose_singleton {n : ℕ} {x : α} : multichoose n [x] = [replicate 
   | zero => simp
   | succ n ih => simp [multichoose_succ_cons, ih]
 
+theorem multichoose_one {l : List α} : multichoose 1 l = reverse (map (fun x => [x]) l) := by
+  induction l with
+  | nil => simp
+  | cons x xs ihl => simp [multichoose_succ_cons, ihl]
+
 /-- Multichoose is empty iff `n` is non-zero and the list is empty. -/
 @[simp]
 theorem multichoose_eq_empty {n : ℕ} {l : List α} :
@@ -800,7 +805,7 @@ theorem multichoose_coe (n : ℕ) (l : List α) :
     multichoose n (↑l : Multiset α) = ↑(List.map (↑) (List.multichoose n l) : List (Multiset α)) := rfl
 
 @[simp]
-theorem multichoose_zero {s : Multiset α} : multichoose 0 s = {∅} :=
+theorem multichoose_zero {s : Multiset α} : multichoose 0 s = {0} :=
   Quotient.inductionOn s fun l => by simp [multichoose_coe']
 
 @[simp]
@@ -858,23 +863,32 @@ lemma multichoose_singleton {n : ℕ} {x : α} : multichoose n {x} = {replicate 
     rw [multichoose_succ_cons]
     simp [ihn]
 
+lemma multichoose_one {s : Multiset α} : multichoose 1 s = s.map (fun x => {x}) :=
+  Quotient.inductionOn s fun l => by
+    simp [multichoose_coe']
+    simp [multichooseAux]
+    simp [List.multichoose_one]
+    rw [List.map_reverse]
+    simp
+    exact List.reverse_perm _
+
 -- def consEmbedding (x : α) : Multiset α ↪ Multiset α := ⟨cons x, cons_injective_right⟩
 
 lemma multichoose_le_powersetCard_nsmul {n : ℕ} {s : Multiset α} :
-    multichoose n s ≤ powersetCard n (max 1 n • s) := by
-  rw [le_iff_count]
-  intro t
-  rw [count_multichoose, count_powersetCard]
-  by_cases ht : card t = n <;> simp [ht]
-  refine Finset.prod_le_prod (by simp) ?_
-  simp
-  intro x hxt
-  by_cases hxs : x ∈ s
-  . rw [Nat.multichoose_eq]
-    refine Nat.choose_le_choose _ ?_
-    cases n with
-    | zero => simp at ht; simp [ht]
-    | succ n =>
+    multichoose n s ≤ powersetCard n (n • s) := by
+  cases n with
+  | zero => simp
+  | succ n =>
+    rw [le_iff_count]
+    intro t
+    rw [count_multichoose, count_powersetCard]
+    by_cases ht : card t = n.succ <;> simp [ht]
+    refine Finset.prod_le_prod (by simp) ?_
+    simp
+    intro x hxt
+    by_cases hxs : x ∈ s
+    . rw [Nat.multichoose_eq]
+      refine Nat.choose_le_choose _ ?_
       simp [Nat.succ_max_succ]
       rw [Nat.succ_mul]
       rw [add_rotate]
@@ -885,10 +899,10 @@ lemma multichoose_le_powersetCard_nsmul {n : ℕ} {s : Multiset α} :
       rw [add_comm]
       rw [Nat.succ_le_succ_iff]
       exact Nat.le_mul_of_pos_right (count_pos.mpr hxs)
-  . simp [hxs]
-    rw [Nat.choose_eq_zero_of_lt (count_pos.mpr hxt)]
-    rw [Nat.multichoose_zero_eq_zero_of_ne]
-    exact count_ne_zero.mpr hxt
+    . simp [hxs]
+      rw [Nat.choose_eq_zero_of_lt (count_pos.mpr hxt)]
+      rw [Nat.multichoose_zero_eq_zero_of_ne]
+      exact count_ne_zero.mpr hxt
 
 end Multiset  -- namespace
 
