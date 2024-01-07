@@ -28,9 +28,22 @@ namespace List
 variable {α : Type*}
 
 /--
-Finds all lists of length `n` formed using the elements of `l` in order.
-Like `List.sublists` but with replacement and a fixed output length.
-Like `Multiset.powersetCard` but with elements in order (no duplicates when the input has no duplicates).
+Finds all lists of length `n` formed using the elements of `l` in order, with replacement.
+Similar to `List.sublistsLen` and `Multiset.powersetCard` but with replacement.
+Supports the definition of `Finset.multichoose`.
+
+For comparison to `List.sublistsLen`:
+```
+List.multichoose 2 [0, 1] = [[1, 1], [0, 1], [0, 0]]
+List.sublistsLen 2 [0, 1] = [[0, 1]]
+List.sublistsLen 2 [0, 0, 1, 1] = [[1, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 0]]
+```
+For comparison to `Multiset.powersetCard`:
+```
+List.count [0, 0] (List.multichoose 2 [0, 0, 0]) = 6
+Multiset.count (Multiset.ofList [0, 0]) (Multiset.powersetCard 2 ↑[0, 0, 0]) = 3
+Multiset.count (Multiset.ofList [0, 0]) (Multiset.powersetCard 2 (2 • ↑[0, 0, 0])) = 15
+```
 -/
 def multichoose : ℕ → List α → List (List α)
   | Nat.zero, _ => [[]]
@@ -69,7 +82,7 @@ lemma multichoose_singleton {n : ℕ} {x : α} : multichoose n [x] = [replicate 
   | zero => simp
   | succ n ih => simp [multichoose_succ_cons, ih]
 
-theorem multichoose_one {l : List α} : multichoose 1 l = reverse (map (fun x => [x]) l) := by
+theorem multichoose_one {l : List α} : multichoose 1 l = map (fun x => [x]) (reverse l) := by
   induction l with
   | nil => simp
   | cons x xs ihl => simp [multichoose_succ_cons, ihl]
@@ -98,8 +111,6 @@ theorem length_multichoose {n : ℕ} {l : List α} :
       simp [multichoose_succ_cons, Nat.multichoose_succ_succ]
       simp [ihn, ihl]
 
--- TODO: Add monotone lemma?
-
 lemma mem_multichoose_succ_cons {n : ℕ} {x : α} {xs : List α} {t : List α} :
     t ∈ multichoose n.succ (x :: xs) ↔ t ∈ multichoose n.succ xs ∨ (∃ s ∈ multichoose n (x :: xs), t = x :: s) := by
   simp [multichoose_succ_cons]
@@ -109,20 +120,6 @@ lemma cons_mem_multichoose_succ_cons {n : ℕ} {x y : α} {xs ys : List α} :
     y :: ys ∈ multichoose n.succ (x :: xs) ↔ y :: ys ∈ multichoose n.succ xs ∨ (y = x ∧ ys ∈ multichoose n (x :: xs)) := by
   simp [multichoose_succ_cons]
   simp [and_comm, eq_comm]
-
--- lemma mem_of_cons_mem_multichoose {n : ℕ} {l : List α} {y : α} {ys : List α} (ht : (y :: ys) ∈ multichoose n l) :
---     y ∈ l := by
---   cases n with
---   | zero => rw [multichoose] at ht; contradiction
---   | succ n =>
---     induction l with
---     | nil => contradiction
---     | cons x xs ih =>
---       rw [mem_cons]
---       simp [multichoose] at ht
---       cases ht with
---       | inl ht => exact Or.inl ht.2.symm
---       | inr ht => exact Or.inr (ih ht)
 
 /-- All lists in `multichoose` are composed of elements from the original list. -/
 theorem mem_of_mem_multichoose {n : ℕ} {l t : List α} (ht : t ∈ multichoose n l) :
@@ -163,6 +160,9 @@ theorem length_of_mem_multichoose {n : ℕ} {l t : List α} (ht : t ∈ multicho
         exact ihn hs
 
 -- TODO: Add more general monotonicity using Sublist `<+`.
+
+-- theorem multichoose_sublist_multichoose {n : ℕ} {l₁ l₂ : List α} (hl : l₁ <+ l₂) :
+--     multichoose n l₁ <+ multichoose n l₂ := sorry
 
 lemma mem_multichoose_of_cons {n : ℕ} {l t : List α} (ht : t ∈ multichoose n l) (x : α) :
     t ∈ multichoose n (x :: l) := by
@@ -298,7 +298,7 @@ theorem exists_mem_multichoose_perm [DecidableEq α] {n : ℕ} {l : List α}
     ∃ s ∈ multichoose n l, s ~ t := by
   simpa using exists_mem_multichoose_eq_multiset (t := Multiset.ofList t) ht_len ht_mem
 
-
+/-- Necessary and sufficient condition for a list being in `multichoose`, in terms of `Multiset`. -/
 theorem exists_mem_multichoose_eq_multiset_iff [DecidableEq α] {n : ℕ} {l : List α} {t : Multiset α} :
     (∃ s ∈ multichoose n l, ↑s = t) ↔ Multiset.card t = n ∧ ∀ x ∈ t, x ∈ l := by
   refine Iff.intro ?_ ?_
@@ -313,6 +313,7 @@ theorem exists_mem_multichoose_eq_multiset_iff [DecidableEq α] {n : ℕ} {l : L
     intro h_card h_mem
     exact exists_mem_multichoose_eq_multiset h_card h_mem
 
+/-- Necessary and sufficient condition for a list being in `multichoose`, in terms of `Perm`. -/
 theorem exists_mem_multichoose_perm_iff [DecidableEq α] {n : ℕ} {l t : List α} :
     (∃ s ∈ multichoose n l, s ~ t) ↔ t.length = n ∧ ∀ x ∈ t, x ∈ l := by
   refine Iff.intro ?_ ?_
@@ -328,6 +329,7 @@ theorem exists_mem_multichoose_perm_iff [DecidableEq α] {n : ℕ} {l t : List �
     intro h_len h_mem
     exact exists_mem_multichoose_perm h_len h_mem
 
+/-- Taking `sublistsLen` commutes with `map`. -/
 theorem sublistsLen_map {f : α → β} {n : ℕ} (l : List α) :
     sublistsLen n (map f l) = map (map f) (sublistsLen n l) := by
   induction n generalizing l with
@@ -337,6 +339,7 @@ theorem sublistsLen_map {f : α → β} {n : ℕ} (l : List α) :
     | nil => simp
     | cons x xs ihl => simp [ihl, ihn]; rfl
 
+/-- `join` is a sublist of `join` if all pairs are sublists. -/
 theorem Sublist.join_of_forall_sublist {s l : List (List α)} (h_len : s.length ≤ l.length)
     (h_sub : ∀ p ∈ List.zip s l, p.1 <+ p.2) : List.join s <+ List.join l := by
   induction s generalizing l with
@@ -349,6 +352,7 @@ theorem Sublist.join_of_forall_sublist {s l : List (List α)} (h_len : s.length 
       refine List.Sublist.append h_sub.1 ?_
       exact ih h_len (fun p => h_sub.2 p.1 p.2)
 
+/-- `join` is a sublist of `join` if all pairs are sublists. -/
 theorem Sublist.join_map_of_forall_sublist {β : Type*} {f g : β → List α} {l : List β}
     (h_sub : ∀ t, f t <+ g t) : List.join (l.map f) <+ List.join (l.map g) := by
   refine join_of_forall_sublist (by simp) ?_
@@ -737,59 +741,6 @@ theorem count_powersetCard_of_card_eq {n : ℕ} {s : Multiset α} {t : Multiset 
     simp [Multiset.powersetCard_coe']
     rw [count_powersetCardAux_of_card_eq ht]
 
--- Try to avoid rewriting for `count_powersetCard`!
-
--- @[simp]
--- lemma powersetAux_nil : powersetAux ([] : List α) = [{}] := rfl
-
--- @[simp]
--- lemma count_zero_powersetAux {l : List α} : List.count 0 (powersetAux l) = 1 := by
---   induction l with
---   | nil => simp
---   | cons x xs =>
---     simp
---     sorry
-
--- theorem powersetCardAux_eq_filter_powersetAux {n : ℕ} {l : List α} :
---     powersetCardAux n l = (powersetAux l).filter fun t => card t = n := by
---   induction n generalizing l with
---   | zero => simp [List.filter_eq]
---   | succ n ihn =>
---     induction l with
---     | nil => simp
---     | cons x xs ihl =>
---       simp [powersetCardAux]
---       simp [powersetAux]
---       sorry
-
--- theorem powersetCard_eq_filter_powerset {n : ℕ} {s : Multiset α} :
---     powersetCard n s = (powerset s).filter fun t => card t = n := by
---   sorry
-
--- theorem count_powersetCard_eq_count_powerset {s : Multiset α} {n : ℕ} (ht : card t = n) :
---     (powersetCard n s).count t = (powerset s).count t := by
---   refine Quotient.inductionOn s ?_
---   intro l
---   simp [-powerset_coe']
---   rw [powerset_coe, ← powersetAux_eq_map_coe]
---   rw [powersetCard_coe']
---   simp
-
---   -- rw [List.Perm.count_eq powersetAux_perm_powersetAux']
---   -- simp [-powerset_coe']
---   -- simp [powersetCard_coe]
---   sorry
-
--- theorem count_powersetCard {n : ℕ} {s : Multiset α} {t : Multiset α} :
---     (powersetCard n s).count t =
---     if card t = n then ∏ x in toFinset t, Nat.choose (s.count x) (t.count x) else 0 := by
---   refine Quotient.inductionOn s ?_
---   intro l
---   by_cases ht_card : card t = n <;> simp [ht_card]
---   rw [count_powersetCard_eq_count_powerset ht_card]
---   rw [count_powerset]
---   simp
-
 end Powerset
 
 
@@ -868,8 +819,7 @@ lemma multichoose_one {s : Multiset α} : multichoose 1 s = s.map (fun x => {x})
     simp [multichoose_coe']
     simp [multichooseAux]
     simp [List.multichoose_one]
-    rw [List.map_reverse]
-    simp
+    simp [List.map_reverse]
     exact List.reverse_perm _
 
 -- def consEmbedding (x : α) : Multiset α ↪ Multiset α := ⟨cons x, cons_injective_right⟩
