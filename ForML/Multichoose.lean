@@ -861,23 +861,6 @@ namespace Finset
 
 variable {α : Type*} [DecidableEq α]
 
--- -- TODO: Is there a way to make this computable?
--- -- `compiler IR check failed at 'Finset.multichoose._rarg', error: unknown declaration 'Finset.toList'`
--- -- Could require that `α` has an order and use `Finset.sort` instead of `Finset.list`?
--- /--
--- Finds all multisets of cardinality `n` formed using the elements of `s`.
--- Like `Multiset.powersetCard` but without duplicates.
--- -/
--- noncomputable def multichoose (n : ℕ) (s : Finset α) : Finset (Multiset α) where
---   val := ↑(List.map Multiset.ofList (List.multichoose n s.toList))
---   nodup := by
---     rw [Multiset.coe_nodup]
---     rw [List.nodup_map_iff_inj_on]
---     . simp
---       intro x hx y hy
---       exact (List.perm_mem_multichoose s.nodup_toList hx hy).mp
---     . exact List.nodup_multichoose s.nodup_toList
-
 /-- Finds all unique multisets of cardinality `n` formed using the elements of `s`. -/
 def multichoose (n : ℕ) (s : Finset α) : Finset (Multiset α) :=
   ⟨Multiset.multichoose n s.1, Multiset.nodup_multichoose s.nodup⟩
@@ -902,21 +885,30 @@ lemma multichoose_succ_empty {n : ℕ} : multichoose n.succ (∅ : Finset α) = 
 /-- The number of elements in `multichoose`. -/
 theorem card_multichoose (n : ℕ) (s : Finset α) :
     (multichoose n s).card = Nat.multichoose (s.card) n := by
-  simp [multichoose]
-  rw [Multiset.card_multichoose]
-  simp
+  simp [multichoose, Multiset.card_multichoose]
 
 /-- Necessary and sufficient condition for a `Multiset` to be a member of `multichoose`. -/
 theorem mem_multichoose_iff {n : ℕ} {s : Finset α} {t : Multiset α} :
     t ∈ multichoose n s ↔ Multiset.card t = n ∧ ∀ x ∈ t, x ∈ s := by
-  simp [multichoose]
-  rw [Multiset.mem_multichoose_iff]
-  simp
+  simp [multichoose, Multiset.mem_multichoose_iff]
 
 theorem multichoose_singleton {n : ℕ} {x : α} : multichoose n {x} = {Multiset.replicate n x} := by
   simp [multichoose]
-  congr
+  congr  -- TODO: Is there a more idiomatic way?
   exact Multiset.multichoose_singleton
+
+theorem multichoose_one {s : Finset α} : multichoose 1 s = s.image (fun x => {x}) := by
+  ext t
+  simp [mem_multichoose_iff]
+  simp [Multiset.card_eq_one]
+  refine Iff.intro ?_ ?_
+  . simp
+    intro x ht
+    simp [ht]
+  . simp
+    intro x hxs ht
+    simp [← ht]
+    exact hxs
 
 theorem multichoose_eq_empty_iff {n : ℕ} (s : Finset α) :
     multichoose n s = ∅ ↔ n ≠ 0 ∧ s = ∅ := by
@@ -925,5 +917,37 @@ theorem multichoose_eq_empty_iff {n : ℕ} (s : Finset α) :
   rw [← Finset.card_eq_zero]
   rw [and_comm]
   exact Nat.multichoose_eq_zero_iff
+
+theorem mem_multichoose_iff_mem_powersetCard_nsmul_val {n : ℕ} {s : Finset α} {t : Multiset α} :
+    t ∈ multichoose n s ↔ t ∈ (n • s.val).powersetCard n := by
+  simp [mem_multichoose_iff]
+  rw [and_comm, and_congr_left_iff]
+  intro ht
+  rw [← ht]
+  simp [Multiset.le_iff_count]
+  simp [Multiset.count_eq_of_nodup s.nodup]
+  -- simp [apply_ite]
+  refine Iff.intro ?_ ?_
+  . intro h x
+    by_cases hxt : x ∈ t
+    . simp [h x hxt]
+      exact Multiset.count_le_card x t
+    . simp [hxt]
+  . intro h x hxt
+    by_cases hxs : x ∈ s <;> simp [hxs]
+    specialize h x
+    simp [hxs] at h
+    exact h hxt
+
+theorem multichoose_eq_toFinset_powersetCard_nsmul_val {n : ℕ} {s : Finset α} :
+    multichoose n s = ((n • s.val).powersetCard n).toFinset := by
+  ext t
+  simp [-Multiset.mem_powersetCard]
+  exact mem_multichoose_iff_mem_powersetCard_nsmul_val
+
+theorem multichoose_eq_toFinset_multichoose_val {n : ℕ} {s : Finset α} :
+    multichoose n s = (s.val.multichoose n).toFinset := by
+  ext t
+  simp [mem_multichoose_iff, Multiset.mem_multichoose_iff]
 
 end Finset  -- namespace
