@@ -390,6 +390,13 @@ lemma cons_injective_right {α : Type*} {x : α} : Function.Injective (cons x) :
 
 lemma cons_injective_left {α : Type*} {s : Multiset α} : Function.Injective s.cons := by simp [Function.Injective]
 
+def consRightEmb (x : α) : Multiset α ↪ Multiset α := ⟨cons x, cons_injective_right⟩
+def singletonEmb : α ↪ Multiset α := ⟨fun x => {x}, by simp [Function.Injective]⟩
+
+@[simp] lemma consRightEmb_apply (x : α) (s : Multiset α) : consRightEmb x s = x ::ₘ s := rfl
+@[simp] lemma singletonEmb_apply (x : α) : singletonEmb x = {x} := rfl
+
+
 theorem count_toList {x : α} {t : Multiset α} : t.toList.count x = t.count x := by
   rw [← coe_count]
   refine Quotient.inductionOn t ?_
@@ -822,8 +829,6 @@ lemma multichoose_one {s : Multiset α} : multichoose 1 s = s.map (fun x => {x})
     simp [List.map_reverse]
     exact List.reverse_perm _
 
--- def consEmbedding (x : α) : Multiset α ↪ Multiset α := ⟨cons x, cons_injective_right⟩
-
 lemma multichoose_le_powersetCard_nsmul {n : ℕ} {s : Multiset α} :
     multichoose n s ≤ powersetCard n (n • s) := by
   cases n with
@@ -897,7 +902,20 @@ theorem multichoose_singleton {n : ℕ} {x : α} : multichoose n {x} = {Multiset
   congr  -- TODO: Is there a more idiomatic way?
   exact Multiset.multichoose_singleton
 
-theorem multichoose_one {s : Finset α} : multichoose 1 s = s.image (fun x => {x}) := by
+-- theorem multichoose_one_eq_image {s : Finset α} : multichoose 1 s = s.image (fun x => {x}) := by
+--   ext t
+--   simp [mem_multichoose_iff]
+--   simp [Multiset.card_eq_one]
+--   refine Iff.intro ?_ ?_
+--   . simp
+--     intro x ht
+--     simp [ht]
+--   . simp
+--     intro x hxs ht
+--     simp [← ht]
+--     exact hxs
+
+theorem multichoose_one {s : Finset α} : multichoose 1 s = s.map Multiset.singletonEmb := by
   ext t
   simp [mem_multichoose_iff]
   simp [Multiset.card_eq_one]
@@ -909,6 +927,11 @@ theorem multichoose_one {s : Finset α} : multichoose 1 s = s.image (fun x => {x
     intro x hxs ht
     simp [← ht]
     exact hxs
+
+@[simp]
+lemma card_multichoose_one {s : Finset α} : card (multichoose 1 s) = card s := by
+  rw [multichoose_one]
+  exact card_map _
 
 theorem multichoose_eq_empty_iff {n : ℕ} (s : Finset α) :
     multichoose n s = ∅ ↔ n ≠ 0 ∧ s = ∅ := by
