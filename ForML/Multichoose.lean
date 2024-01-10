@@ -390,12 +390,11 @@ lemma cons_injective_right {α : Type*} {x : α} : Function.Injective (cons x) :
 
 lemma cons_injective_left {α : Type*} {s : Multiset α} : Function.Injective s.cons := by simp [Function.Injective]
 
-def consRightEmb (x : α) : Multiset α ↪ Multiset α := ⟨cons x, cons_injective_right⟩
-def singletonEmb : α ↪ Multiset α := ⟨fun x => {x}, by simp [Function.Injective]⟩
+def consRightEmbedding (x : α) : Multiset α ↪ Multiset α := ⟨cons x, cons_injective_right⟩
+def singletonEmbedding : α ↪ Multiset α := ⟨fun x => {x}, by simp [Function.Injective]⟩
 
-@[simp] lemma consRightEmb_apply (x : α) (s : Multiset α) : consRightEmb x s = x ::ₘ s := rfl
-@[simp] lemma singletonEmb_apply (x : α) : singletonEmb x = {x} := rfl
-
+@[simp] lemma consRightEmbedding_apply (x : α) (s : Multiset α) : consRightEmbedding x s = x ::ₘ s := rfl
+@[simp] lemma singletonEmbedding_apply (x : α) : singletonEmbedding x = {x} := rfl
 
 theorem count_toList {x : α} {t : Multiset α} : t.toList.count x = t.count x := by
   rw [← coe_count]
@@ -564,7 +563,87 @@ theorem length_multichooseAux {n : ℕ} {l : List α} : (multichooseAux n l).len
 
 end Aux
 
-section Powerset  -- For showing that `multichoose` is a subset of `powersetCard`.
+
+/-- The multisets obtained by choosing `n` elements from a multiset with replacement. -/
+def multichoose (n : ℕ) (s : Multiset α) : Multiset (Multiset α) :=
+  Quot.liftOn s
+    (fun l => multichooseAux n l)
+    (fun _ _ h => Quot.sound (multichooseAux_perm h))
+
+theorem multichoose_coe' (n : ℕ) (l : List α) : multichoose n (↑l : Multiset α) = ↑(multichooseAux n l) := rfl
+
+theorem multichoose_coe (n : ℕ) (l : List α) :
+    multichoose n (↑l : Multiset α) = ↑(List.map (↑) (List.multichoose n l) : List (Multiset α)) := rfl
+
+@[simp]
+theorem multichoose_zero {s : Multiset α} : multichoose 0 s = {0} :=
+  Quotient.inductionOn s fun l => by simp [multichoose_coe']
+
+@[simp]
+theorem multichoose_succ_zero {n : ℕ} : multichoose n.succ (0 : Multiset α) = 0 := by
+  generalize hs : (0 : Multiset α) = s
+  rw [eq_comm] at hs
+  revert hs
+  refine Quotient.inductionOn s ?_
+  simp [multichoose_coe']
+
+theorem multichoose_succ_cons {n : ℕ} {x : α} {s : Multiset α} :
+    multichoose n.succ (x ::ₘ s) = multichoose n.succ s + (multichoose n (x ::ₘ s)).map (cons x) := by
+  refine Quotient.inductionOn s ?_
+  intro l
+  simp [multichoose_coe']
+  simp [multichooseAux_succ_cons]
+
+theorem mem_multichoose_iff {n : ℕ} {s : Multiset α} {t : Multiset α} :
+    t ∈ multichoose n s ↔ card t = n ∧ ∀ x ∈ t, x ∈ s :=
+  Quotient.inductionOn s fun l => by
+    simp [multichoose_coe']
+    exact mem_multichooseAux_iff
+
+theorem count_multichoose {n : ℕ} {s : Multiset α} {t : Multiset α} :
+    (multichoose n s).count t = if card t = n then ∏ x in toFinset t, Nat.multichoose (s.count x) (t.count x) else 0 :=
+  Quotient.inductionOn s fun l => by
+    simp [multichoose_coe']
+    exact count_multichooseAux
+
+theorem count_multichoose_of_card_eq {n : ℕ} {s : Multiset α} {t : Multiset α} (ht : card t = n) :
+    (multichoose n s).count t = ∏ x in toFinset t, Nat.multichoose (s.count x) (t.count x) := by
+  simp [count_multichoose, ht]
+
+theorem count_multichoose_of_card_ne {n : ℕ} {s : Multiset α} {t : Multiset α} (ht : card t ≠ n) :
+    (multichoose n s).count t = 0 := by
+  simp [count_multichoose, ht]
+
+theorem nodup_multichoose {n : ℕ} {s : Multiset α} : Nodup s → Nodup (multichoose n s) :=
+  Quotient.inductionOn s fun l => by
+    simp [multichoose_coe']
+    exact nodup_multichooseAux
+
+theorem card_multichoose {n : ℕ} {s : Multiset α} :
+    card (multichoose n s) = Nat.multichoose (card s) n :=
+  Quotient.inductionOn s fun l => by
+    simp [multichoose_coe']
+    exact length_multichooseAux
+
+lemma multichoose_singleton {n : ℕ} {x : α} : multichoose n {x} = {replicate n x} := by
+  -- Avoid passing through `multichooseAux`.
+  induction n with
+  | zero => simp
+  | succ n ihn =>
+    change multichoose (Nat.succ n) (x ::ₘ 0) = {replicate (Nat.succ n) x}
+    rw [multichoose_succ_cons]
+    simp [ihn]
+
+lemma multichoose_one {s : Multiset α} : multichoose 1 s = s.map (fun x => {x}) :=
+  Quotient.inductionOn s fun l => by
+    simp [multichoose_coe']
+    simp [multichooseAux]
+    simp [List.multichoose_one]
+    simp [List.map_reverse]
+    exact List.reverse_perm _
+
+
+section Powerset  -- For showing that `multichoose` is a subset of `powersetCard n ∘ nsmul n`.
 
 theorem count_powersetAux'_cons {y : α} {l : List α} {t : Multiset α} :
     List.count t (powersetAux' (y :: l)) =
@@ -750,85 +829,6 @@ theorem count_powersetCard_of_card_eq {n : ℕ} {s : Multiset α} {t : Multiset 
 
 end Powerset
 
-
-/-- The multisets obtained by choosing `n` elements from a multiset with replacement. -/
-def multichoose (n : ℕ) (s : Multiset α) : Multiset (Multiset α) :=
-  Quot.liftOn s
-    (fun l => multichooseAux n l)
-    (fun _ _ h => Quot.sound (multichooseAux_perm h))
-
-theorem multichoose_coe' (n : ℕ) (l : List α) : multichoose n (↑l : Multiset α) = ↑(multichooseAux n l) := rfl
-
-theorem multichoose_coe (n : ℕ) (l : List α) :
-    multichoose n (↑l : Multiset α) = ↑(List.map (↑) (List.multichoose n l) : List (Multiset α)) := rfl
-
-@[simp]
-theorem multichoose_zero {s : Multiset α} : multichoose 0 s = {0} :=
-  Quotient.inductionOn s fun l => by simp [multichoose_coe']
-
-@[simp]
-theorem multichoose_succ_zero {n : ℕ} : multichoose n.succ (0 : Multiset α) = 0 := by
-  generalize hs : (0 : Multiset α) = s
-  rw [eq_comm] at hs
-  revert hs
-  refine Quotient.inductionOn s ?_
-  simp [multichoose_coe']
-
-theorem multichoose_succ_cons {n : ℕ} {x : α} {s : Multiset α} :
-    multichoose n.succ (x ::ₘ s) = multichoose n.succ s + (multichoose n (x ::ₘ s)).map (cons x) := by
-  refine Quotient.inductionOn s ?_
-  intro l
-  simp [multichoose_coe']
-  simp [multichooseAux_succ_cons]
-
-theorem mem_multichoose_iff {n : ℕ} {s : Multiset α} {t : Multiset α} :
-    t ∈ multichoose n s ↔ card t = n ∧ ∀ x ∈ t, x ∈ s :=
-  Quotient.inductionOn s fun l => by
-    simp [multichoose_coe']
-    exact mem_multichooseAux_iff
-
-theorem count_multichoose {n : ℕ} {s : Multiset α} {t : Multiset α} :
-    (multichoose n s).count t = if card t = n then ∏ x in toFinset t, Nat.multichoose (s.count x) (t.count x) else 0 :=
-  Quotient.inductionOn s fun l => by
-    simp [multichoose_coe']
-    exact count_multichooseAux
-
-theorem count_multichoose_of_card_eq {n : ℕ} {s : Multiset α} {t : Multiset α} (ht : card t = n) :
-    (multichoose n s).count t = ∏ x in toFinset t, Nat.multichoose (s.count x) (t.count x) := by
-  simp [count_multichoose, ht]
-
-theorem count_multichoose_of_card_ne {n : ℕ} {s : Multiset α} {t : Multiset α} (ht : card t ≠ n) :
-    (multichoose n s).count t = 0 := by
-  simp [count_multichoose, ht]
-
-theorem nodup_multichoose {n : ℕ} {s : Multiset α} : Nodup s → Nodup (multichoose n s) :=
-  Quotient.inductionOn s fun l => by
-    simp [multichoose_coe']
-    exact nodup_multichooseAux
-
-theorem card_multichoose {n : ℕ} {s : Multiset α} :
-    card (multichoose n s) = Nat.multichoose (card s) n :=
-  Quotient.inductionOn s fun l => by
-    simp [multichoose_coe']
-    exact length_multichooseAux
-
-lemma multichoose_singleton {n : ℕ} {x : α} : multichoose n {x} = {replicate n x} := by
-  -- Avoid passing through `multichooseAux`.
-  induction n with
-  | zero => simp
-  | succ n ihn =>
-    change multichoose (Nat.succ n) (x ::ₘ 0) = {replicate (Nat.succ n) x}
-    rw [multichoose_succ_cons]
-    simp [ihn]
-
-lemma multichoose_one {s : Multiset α} : multichoose 1 s = s.map (fun x => {x}) :=
-  Quotient.inductionOn s fun l => by
-    simp [multichoose_coe']
-    simp [multichooseAux]
-    simp [List.multichoose_one]
-    simp [List.map_reverse]
-    exact List.reverse_perm _
-
 lemma multichoose_le_powersetCard_nsmul {n : ℕ} {s : Multiset α} :
     multichoose n s ≤ powersetCard n (n • s) := by
   cases n with
@@ -882,7 +882,7 @@ lemma multichoose_succ_empty {n : ℕ} : multichoose n.succ (∅ : Finset α) = 
   simp [multichoose]
 
 -- lemma multichoose_succ_insert {n : ℕ} {x : α} {s : Finset α} (hx : x ∉ s) :
---     multichoose n.succ (insert x s) = multichoose n.succ s ∪ Finset.map (Multiset.consEmbedding x) (multichoose n (insert x s)) := by
+--     multichoose n.succ (insert x s) = multichoose n.succ s ∪ Finset.map (Multiset.consRightEmbedding x) (multichoose n (insert x s)) := by
 --   simp [multichoose, Multiset.multichoose_succ_cons, hx]
 --   congr
 --   sorry
@@ -915,7 +915,7 @@ theorem multichoose_singleton {n : ℕ} {x : α} : multichoose n {x} = {Multiset
 --     simp [← ht]
 --     exact hxs
 
-theorem multichoose_one {s : Finset α} : multichoose 1 s = s.map Multiset.singletonEmb := by
+theorem multichoose_one {s : Finset α} : multichoose 1 s = s.map Multiset.singletonEmbedding := by
   ext t
   simp [mem_multichoose_iff]
   simp [Multiset.card_eq_one]
