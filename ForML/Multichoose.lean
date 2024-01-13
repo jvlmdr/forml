@@ -390,6 +390,7 @@ lemma cons_injective_right {α : Type*} {x : α} : Function.Injective (cons x) :
 
 lemma cons_injective_left {α : Type*} {s : Multiset α} : Function.Injective s.cons := by simp [Function.Injective]
 
+-- TODO: Should this be an `OrderEmbedding`?
 def consRightEmbedding (x : α) : Multiset α ↪ Multiset α := ⟨cons x, cons_injective_right⟩
 def singletonEmbedding : α ↪ Multiset α := ⟨fun x => {x}, by simp [Function.Injective]⟩
 
@@ -636,12 +637,9 @@ lemma multichoose_singleton {n : ℕ} {x : α} : multichoose n {x} = {replicate 
 
 lemma multichoose_one {s : Multiset α} : multichoose 1 s = s.map (fun x => {x}) :=
   Quotient.inductionOn s fun l => by
-    simp [multichoose_coe']
-    simp [multichooseAux]
-    simp [List.multichoose_one]
-    simp [List.map_reverse]
-    exact List.reverse_perm _
-
+    rw [quot_mk_to_coe, coe_map, multichoose_coe', multichooseAux,
+      List.multichoose_one, List.map_map, List.map_reverse, coe_reverse]
+    rfl
 
 section Powerset  -- For showing that `multichoose` is a subset of `powersetCard n ∘ nsmul n`.
 
@@ -881,12 +879,6 @@ lemma multichoose_zero {s : Finset α} : multichoose 0 s = {0} := by
 lemma multichoose_succ_empty {n : ℕ} : multichoose n.succ (∅ : Finset α) = ∅ := by
   simp [multichoose]
 
--- lemma multichoose_succ_insert {n : ℕ} {x : α} {s : Finset α} (hx : x ∉ s) :
---     multichoose n.succ (insert x s) = multichoose n.succ s ∪ Finset.map (Multiset.consRightEmbedding x) (multichoose n (insert x s)) := by
---   simp [multichoose, Multiset.multichoose_succ_cons, hx]
---   congr
---   sorry
-
 /-- The number of elements in `multichoose`. -/
 theorem card_multichoose (n : ℕ) (s : Finset α) :
     (multichoose n s).card = Nat.multichoose (s.card) n := by
@@ -897,41 +889,47 @@ theorem mem_multichoose_iff {n : ℕ} {s : Finset α} {t : Multiset α} :
     t ∈ multichoose n s ↔ Multiset.card t = n ∧ ∀ x ∈ t, x ∈ s := by
   simp [multichoose, Multiset.mem_multichoose_iff]
 
-theorem multichoose_singleton {n : ℕ} {x : α} : multichoose n {x} = {Multiset.replicate n x} := by
-  simp [multichoose]
-  congr  -- TODO: Is there a more idiomatic way?
-  exact Multiset.multichoose_singleton
+theorem card_of_mem_multichoose {n : ℕ} {s : Finset α} {t : Multiset α} (ht : t ∈ multichoose n s) :
+    Multiset.card t = n := (mem_multichoose_iff.mp ht).1
 
--- theorem multichoose_one_eq_image {s : Finset α} : multichoose 1 s = s.image (fun x => {x}) := by
---   ext t
---   simp [mem_multichoose_iff]
---   simp [Multiset.card_eq_one]
---   refine Iff.intro ?_ ?_
---   . simp
---     intro x ht
---     simp [ht]
---   . simp
---     intro x hxs ht
---     simp [← ht]
---     exact hxs
+theorem mem_of_mem_multichoose {n : ℕ} {s : Finset α} {t : Multiset α} (ht : t ∈ multichoose n s) :
+    ∀ x ∈ t, x ∈ s := (mem_multichoose_iff.mp ht).2
+
+theorem multichoose_succ_insert {n : ℕ} {x : α} {s : Finset α} (hx : x ∉ s) :
+    multichoose n.succ (insert x s) =
+    multichoose n.succ s ∪ (multichoose n (insert x s)).map (Multiset.consRightEmbedding x) := by
+  ext t
+  simp only [multichoose, mem_union, mem_map, mem_mk]
+  simp only [insert_val, Multiset.ndinsert_of_not_mem hx]
+  simp [Multiset.multichoose_succ_cons]
+
+/-- The union in `multichoose_succ_insert` is disjoint. -/
+theorem disjoint_multichoose_succ_insert {n : ℕ} {x : α} {s : Finset α} (hx : x ∉ s) :
+    Disjoint (multichoose n.succ s) ((multichoose n (insert x s)).map (Multiset.consRightEmbedding x)) := by
+  simp only [disjoint_iff_ne, mem_map, forall_exists_index, and_imp,
+    forall_apply_eq_imp_iff₂, Multiset.consRightEmbedding_apply]
+  intro t hts r _ h
+  simp only [h, mem_multichoose_iff, Multiset.mem_cons, forall_eq_or_imp] at hts
+  exact hx hts.2.1
+
+theorem multichoose_singleton {n : ℕ} {x : α} : multichoose n {x} = {Multiset.replicate n x} := by
+  ext t
+  simp [multichoose, Multiset.multichoose_singleton]
 
 theorem multichoose_one {s : Finset α} : multichoose 1 s = s.map Multiset.singletonEmbedding := by
   ext t
-  simp [mem_multichoose_iff]
-  simp [Multiset.card_eq_one]
+  simp only [mem_multichoose_iff, mem_map, Multiset.singletonEmbedding_apply, Multiset.card_eq_one]
   refine Iff.intro ?_ ?_
-  . simp
+  . simp only [and_imp, forall_exists_index]
     intro x ht
     simp [ht]
-  . simp
+  . simp only [and_imp, forall_exists_index]
     intro x hxs ht
-    simp [← ht]
-    exact hxs
+    simp [← ht, hxs]
 
 @[simp]
 lemma card_multichoose_one {s : Finset α} : card (multichoose 1 s) = card s := by
-  rw [multichoose_one]
-  exact card_map _
+  simp [multichoose_one]
 
 theorem multichoose_eq_empty_iff {n : ℕ} (s : Finset α) :
     multichoose n s = ∅ ↔ n ≠ 0 ∧ s = ∅ := by
