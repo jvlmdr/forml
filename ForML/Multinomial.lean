@@ -5,9 +5,6 @@ import ForML.Multichoose
 
 open scoped BigOperators
 
-attribute [simp] Fin.succ_ne_zero
-
-
 namespace Finset
 
 variable {ι κ : Type*}
