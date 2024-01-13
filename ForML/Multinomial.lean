@@ -156,6 +156,7 @@ lemma pairwiseDisjoint_multichooseSplit (k : ℕ) (s : Finset α) (x : α) :
   intro i _ j _ hij
   simp [disjoint_iff_ne, hij]
 
+-- TODO: Use `Finset.image` proofs to simplify this?
 theorem multichoose_eq_biUnion_multichoose_erase {k : ℕ} {s : Finset α} {x : α} (hx : x ∈ s) :
     s.multichoose k = (range k.succ).biUnion fun m ↦
       ((s.erase x).multichoose (k - m)).map (addLeftEmbedding (Multiset.replicate m x)) := by
@@ -175,15 +176,15 @@ theorem multichoose_eq_biUnion_multichoose_erase {k : ℕ} {s : Finset α} {x : 
         exact (fun a ha h ↦ ⟨h, ht.2 a ha⟩)
       · rw [← Multiset.filter_eq', Multiset.filter_add_not]
   · simp only [forall_exists_index, and_imp]
-    intro m hm r hr_card hr_mem ht
+    intro m hm u hu_card hu_mem ht
     refine And.intro ?_ ?_
-    · simp [← ht, hr_card, hm]
+    · simp [← ht, hu_card, hm]
     · rw [← ht]
       simp only [Multiset.mem_add, Multiset.mem_replicate]
       intro a ha
       cases ha with
       | inl ha => rw [ha.2]; exact hx
-      | inr ha => exact mem_of_mem_erase (hr_mem a ha)
+      | inr ha => exact mem_of_mem_erase (hu_mem a ha)
 
 theorem mapsTo_prodCountFilterNe_multichoose {k : ℕ} {s : Finset α} {x : α} :
     Set.MapsTo (fun t ↦ (Multiset.count x t, Multiset.filter (fun a => a ≠ x) t))
@@ -278,6 +279,10 @@ section Sum
 
 variable {A : Type*} [CommSemiring A]
 
+/--
+[Multinomial theorem](https://en.wikipedia.org/wiki/Multinomial_theorem)
+for the expansion of a power of a sum.
+-/
 theorem Finset.pow_sum {p : ℕ} {s : Finset α} {f : α → A} :
     (∑ i in s, f i) ^ p = ∑ k in s.multichoose p, k.multinomial * ∏ i in s, f i ^ k.count i := by
   induction s using Finset.induction generalizing p with
@@ -316,7 +321,7 @@ theorem Finset.pow_sum {p : ℕ} {s : Finset α} {f : α → A} :
       · rw [Multiset.filter_add]
         simp only [ne_comm (a := a), Multiset.filter_add]
         rw [Multiset.filter_eq_nil.mpr (by simp [Multiset.mem_replicate])]
-        rw [Multiset.filter_eq_self.mpr (fun u hu ↦ ne_of_mem_of_not_mem hu hat)]
+        rw [Multiset.filter_eq_self.mpr (fun b hb ↦ ne_of_mem_of_not_mem hb hat)]
         rw [zero_add]
     · -- Split the product.
       rw [prod_insert ha]
