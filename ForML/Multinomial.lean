@@ -42,11 +42,11 @@ end Multiset
 
 namespace Prod
 
-def mkFstEmbedding (b : β) : α ↪ α × β := ⟨fun x ↦ (x, b), by simp [Function.Injective]⟩
-def mkSndEmbedding (a : α) : β ↪ α × β := ⟨fun x ↦ (a, x), by simp [Function.Injective]⟩
+def mkLeftEmbedding (b : β) : α ↪ α × β := ⟨fun x ↦ (x, b), fun _ _ h ↦ mk_inj_right.mp h⟩
+def mkRightEmbedding (a : α) : β ↪ α × β := ⟨fun x ↦ (a, x), fun _ _ h ↦ mk_inj_left.mp h⟩
 
-@[simp] lemma mkFstEmbedding_apply (b : β) (x : α) : mkFstEmbedding b x = (x, b) := rfl
-@[simp] lemma mkSndEmbedding_apply (a : α) (x : β) : mkSndEmbedding a x = (a, x) := rfl
+@[simp] lemma mkLeftEmbedding_apply (b : β) (x : α) : mkLeftEmbedding b x = (x, b) := rfl
+@[simp] lemma mkRightEmbedding_apply (a : α) (x : β) : mkRightEmbedding a x = (a, x) := rfl
 
 end Prod
 
@@ -60,7 +60,7 @@ Image of count-remove on `Finset.multichoose k s`, defined as a `Finset`.
 Equivalent to `{q : ℕ × Multiset (Fin n) | q.1 ≤ k ∧ q.2 ∈ Finset.multichoose (k - q.1) Finset.univ}`.
 -/
 def multichooseSplit (k : ℕ) (s : Finset α) (x : α) : Finset (ℕ × Multiset α) :=
-  (range k.succ).biUnion fun m ↦ (multichoose (k - m) (s.erase x)).map (Prod.mkSndEmbedding m)
+  (range k.succ).biUnion fun m ↦ (multichoose (k - m) (s.erase x)).map (Prod.mkRightEmbedding m)
 
 theorem mem_multichooseSplit_iff {k : ℕ} {s : Finset α} {x : α} {q : ℕ × Multiset α} :
     q ∈ multichooseSplit k s x ↔ q.1 ≤ k ∧ q.2 ∈ multichoose (k - q.1) (s.erase x) := by
@@ -152,7 +152,7 @@ theorem image_prodCountFilterNe_multichoose {k : ℕ} {s : Finset α} {x : α} (
 
 lemma pairwiseDisjoint_multichooseSplit (k : ℕ) (s : Finset α) (x : α) :
     Set.PairwiseDisjoint ↑(range (Nat.succ k))
-      fun m ↦ ((s.erase x).multichoose (k - m)).map (Prod.mkSndEmbedding m) := by
+      fun m ↦ ((s.erase x).multichoose (k - m)).map (Prod.mkRightEmbedding m) := by
   intro i _ j _ hij
   simp [disjoint_iff_ne, hij]
 
@@ -301,7 +301,7 @@ theorem Finset.pow_sum {p : ℕ} {s : Finset α} {f : α → A} :
     -- Apply inductive hypothesis on left.
     simp only [ih, mul_sum, sum_mul]
     -- Simplify inner sum on right.
-    simp only [sum_map, erase_insert ha, Prod.mkSndEmbedding_apply]
+    simp only [sum_map, erase_insert ha, Prod.mkRightEmbedding_apply]
     refine sum_congr rfl ?_
     intro t ht
     -- Separate the multinomial and product terms.
