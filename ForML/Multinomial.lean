@@ -28,6 +28,10 @@ namespace Multiset
 @[simp]
 lemma multinomial_zero : multinomial (0 : Multiset α) = 1 := rfl
 
+lemma multinomial_eq {m : Multiset α} : m.multinomial = Nat.multinomial m.toFinset m.count := by
+  simp [multinomial, Finsupp.multinomial_eq]
+  rfl
+
 theorem card_filter_ne (a : α) (s : Multiset α) :
     card (s.filter (fun x => x ≠ a)) = card s - s.count a := by
   conv => rhs; lhs; rw [← Multiset.filter_add_not (fun x => x = a) s]
@@ -45,17 +49,6 @@ def mkSndEmbedding (a : α) : β ↪ α × β := ⟨fun x ↦ (a, x), by simp [F
 @[simp] lemma mkSndEmbedding_apply (a : α) (x : β) : mkSndEmbedding a x = (a, x) := rfl
 
 end Prod
-
--- lemma Multiset.multinomial_eq {m : Multiset α} : m.multinomial = Nat.multinomial m.toFinset m.count := by
---   simp [Multiset.multinomial, Finsupp.multinomial_eq]
---   rfl
-
-variable {E : Type*}  -- TODO: Rename/remove?
-
--- `[CommMonoid A]` for `Finset.prod`
--- `[NormedRing A] [NormedAlgebra 𝕜 A]` to be like `norm_iteratedFDeriv_mul_le`
-variable {A : Type*} [CommSemiring A]  -- CommMonoid?
-
 
 section Split
 
@@ -109,7 +102,7 @@ theorem replicateAdd_countConsFilterNe_eq_self {x : α} {t : Multiset α} :
   simp [Set.LeftInvOn, ← Multiset.filter_eq', Multiset.filter_add_not]
 
 theorem countConsFilterNe_replicateAdd_eq_self {k : ℕ} {s : Finset α} {x : α} :
-    ∀ q ∈ Finset.multichooseSplit k s x,
+    ∀ q ∈ multichooseSplit k s x,
     ⟨(Multiset.replicate q.1 x + q.2).count x,
       (Multiset.replicate q.1 x + q.2).filter (fun a => a ≠ x)⟩ = q := by
   intro q
@@ -126,6 +119,72 @@ theorem countConsFilterNe_replicateAdd_eq_self {k : ℕ} {s : Finset α} {x : α
     rw [Multiset.filter_eq_self.mpr (fun a ha ↦ ne_of_mem_erase (ht_mem a ha))]
     simp
 
+theorem image_replicateAdd_multichooseSplit {k : ℕ} {s : Finset α} {x : α} (hx : x ∈ s) :
+    (multichooseSplit k s x).image (fun q ↦ Multiset.replicate q.1 x + q.2) = multichoose k s := by
+  ext t
+  simp only [mem_image]
+  refine Iff.intro ?_ ?_
+  · simp only [forall_exists_index, and_imp]
+    intro q hq ht
+    rw [← ht]
+    exact replicateAdd_mem_multichoose hx hq
+  · intro ht
+    use (Multiset.count x t, Multiset.filter (fun a => a ≠ x) t)
+    refine And.intro ?_ ?_
+    · exact prodCountFilterNe_mem_multichooseSplit ht
+    · simp [replicateAdd_countConsFilterNe_eq_self]
+
+theorem image_prodCountFilterNe_multichoose {k : ℕ} {s : Finset α} {x : α} (hx : x ∈ s) :
+    (multichoose k s).image (fun t ↦ (Multiset.count x t, Multiset.filter (fun a => a ≠ x) t)) =
+      multichooseSplit k s x := by
+  ext q
+  simp only [mem_image]
+  refine Iff.intro ?_ ?_
+  · simp only [forall_exists_index, and_imp]
+    intro t ht hq
+    rw [← hq]
+    exact prodCountFilterNe_mem_multichooseSplit ht
+  · intro hq
+    use Multiset.replicate q.1 x + q.2
+    refine And.intro ?_ ?_
+    · refine replicateAdd_mem_multichoose hx hq
+    · exact countConsFilterNe_replicateAdd_eq_self q hq
+
+lemma pairwiseDisjoint_multichooseSplit (k : ℕ) (s : Finset α) (x : α) :
+    Set.PairwiseDisjoint ↑(range (Nat.succ k))
+      fun m ↦ ((s.erase x).multichoose (k - m)).map (Prod.mkSndEmbedding m) := by
+  intro i _ j _ hij
+  simp [disjoint_iff_ne, hij]
+
+theorem multichoose_eq_biUnion_multichoose_erase {k : ℕ} {s : Finset α} {x : α} (hx : x ∈ s) :
+    s.multichoose k = (range k.succ).biUnion fun m ↦
+      ((s.erase x).multichoose (k - m)).map (addLeftEmbedding (Multiset.replicate m x)) := by
+  ext t
+  simp only [mem_biUnion, mem_range, mem_map, addLeftEmbedding_apply, Nat.lt_succ]
+  simp only [mem_multichoose_iff]
+  refine Iff.intro ?_ ?_
+  · intro ht
+    use t.count x
+    rw [← ht.1]
+    refine And.intro ?_ ?_
+    · simp [Multiset.count_le_card]
+    · use t.filter (fun a ↦ a ≠ x)
+      refine And.intro (And.intro ?_ ?_) ?_
+      · rw [Multiset.card_filter_ne]
+      · simp only [Multiset.mem_filter, mem_erase, and_imp]
+        exact (fun a ha h ↦ ⟨h, ht.2 a ha⟩)
+      · rw [← Multiset.filter_eq', Multiset.filter_add_not]
+  · simp only [forall_exists_index, and_imp]
+    intro m hm r hr_card hr_mem ht
+    refine And.intro ?_ ?_
+    · simp [← ht, hr_card, hm]
+    · rw [← ht]
+      simp only [Multiset.mem_add, Multiset.mem_replicate]
+      intro a ha
+      cases ha with
+      | inl ha => rw [ha.2]; exact hx
+      | inr ha => exact mem_of_mem_erase (hr_mem a ha)
+
 theorem mapsTo_prodCountFilterNe_multichoose {k : ℕ} {s : Finset α} {x : α} :
     Set.MapsTo (fun t ↦ (Multiset.count x t, Multiset.filter (fun a => a ≠ x) t))
       (multichoose k s) (multichooseSplit k s x) :=
@@ -135,38 +194,6 @@ theorem mapsTo_replicateAdd_multichooseSplit {k : ℕ} {s : Finset α} {x : α} 
     Set.MapsTo (fun q : ℕ × Multiset α ↦ Multiset.replicate q.1 x + q.2)
       (multichooseSplit k s x) (multichoose k s) :=
   fun _ hq ↦ replicateAdd_mem_multichoose hx hq
-
-theorem image_replicateAdd_multichooseSplit {k : ℕ} {s : Finset α} {x : α} (hx : x ∈ s) :
-    (multichooseSplit k s x).image (fun q ↦ Multiset.replicate q.1 x + q.2) = multichoose k s := by
-  ext t
-  simp only [mem_image]
-  refine Iff.intro ?_ ?_
-  . simp only [forall_exists_index, and_imp]
-    intro q hq ht
-    rw [← ht]
-    exact replicateAdd_mem_multichoose hx hq
-  . intro ht
-    use (Multiset.count x t, Multiset.filter (fun a => a ≠ x) t)
-    refine And.intro ?_ ?_
-    . exact prodCountFilterNe_mem_multichooseSplit ht
-    . simp [replicateAdd_countConsFilterNe_eq_self]
-
-theorem image_prodCountFilterNe_multichoose {k : ℕ} {s : Finset α} {x : α} (hx : x ∈ s) :
-    (multichoose k s).image (fun t ↦ (Multiset.count x t, Multiset.filter (fun a => a ≠ x) t)) =
-      multichooseSplit k s x := by
-  ext q
-  simp only [mem_image]
-  refine Iff.intro ?_ ?_
-  . simp only [forall_exists_index, and_imp]
-    intro t ht hq
-    rw [← hq]
-    exact prodCountFilterNe_mem_multichooseSplit ht
-  . intro hq
-    use Multiset.replicate q.1 x + q.2
-    refine And.intro ?_ ?_
-    . refine replicateAdd_mem_multichoose hx hq
-    . exact countConsFilterNe_replicateAdd_eq_self q hq
-
 
 theorem leftInverse_prodCountFilterNe_multichoose {x : α} :
     Function.LeftInverse (fun q ↦ Multiset.replicate q.1 x + q.2)
@@ -187,8 +214,6 @@ theorem invOn_prodCountFilterNe_multichoose {k : ℕ} {s : Finset α} {x : α} :
       (multichooseSplit k s x) :=
   ⟨leftInverse_prodCountFilterNe_multichoose.leftInvOn _,
     leftInvOn_replicateAdd_multichooseSplit⟩
-
--- Combine `inv` and `mapsTo` to obtain `inj`, `surj`, `bij`.
 
 theorem injective_prodCountFilterNe_multichoose {x : α} :
     Function.Injective (fun t ↦ (Multiset.count x t, Multiset.filter (fun a => a ≠ x) t)) :=
@@ -221,14 +246,7 @@ theorem bijOn_addReplicate_multichooseSplit {k : ℕ} {s : Finset α} {x : α} (
   (bijOn_prodCountFilterNe_multichoose hx).symm
     invOn_prodCountFilterNe_multichoose.symm
 
-lemma pairwiseDisjoint_multichooseSplit (k : ℕ) (s : Finset α) (x : α) :
-    Set.PairwiseDisjoint ↑(range (Nat.succ k))
-      fun m ↦ ((s.erase x).multichoose (k - m)).map (Prod.mkSndEmbedding m) := by
-  intro i _ j _ hij
-  simp [disjoint_iff_ne, hij]
-
--- TODO: `multichoose_eq_biUnion_multichoose_erase`
-
+-- TODO: Could remove? Turned out to be difficult to use.
 def multichooseSplitEquiv (k : ℕ) {s : Finset α} {x : α} (hx : x ∈ s) :
     ↑(multichoose k s) ≃ ↑(multichooseSplit k s x) where
   toFun
@@ -256,35 +274,37 @@ end Finset  -- namespace
 
 end Split
 
-namespace Finset
+section Sum
 
-theorem pow_sum {p : ℕ} {s : Finset α} {f : α → A} :
+variable {A : Type*} [CommSemiring A]
+
+theorem Finset.pow_sum {p : ℕ} {s : Finset α} {f : α → A} :
     (∑ i in s, f i) ^ p = ∑ k in s.multichoose p, k.multinomial * ∏ i in s, f i ^ k.count i := by
   induction s using Finset.induction generalizing p with
   | empty => cases p <;> simp
   | @insert a s ha ih =>
     -- Apply binomial theorem on left.
-    rw [Finset.sum_insert ha, add_pow]
+    rw [sum_insert ha, add_pow]
     -- Re-index sum on right.
     rw [sum_bijOn_comp_leftInvOn (bijOn_prodCountFilterNe_multichoose (mem_insert_self a s))
       (leftInverse_prodCountFilterNe_multichoose.leftInvOn _)]
     rw [multichooseSplit]
     rw [sum_biUnion (pairwiseDisjoint_multichooseSplit p _ a)]
-    refine Finset.sum_congr rfl ?_
+    refine sum_congr rfl ?_
     simp only [mem_range, Nat.lt_succ]
     intro m hmp
     -- Apply inductive hypothesis on left.
-    simp only [ih, Finset.mul_sum, Finset.sum_mul]
+    simp only [ih, mul_sum, sum_mul]
     -- Simplify inner sum on right.
     simp only [sum_map, erase_insert ha, Prod.mkSndEmbedding_apply]
-    refine Finset.sum_congr rfl ?_
+    refine sum_congr rfl ?_
     intro t ht
     -- Separate the multinomial and product terms.
     suffices : (Multiset.replicate m a + t).multinomial = p.choose m * t.multinomial ∧
         ∏ i in insert a s, f i ^ (Multiset.replicate m a + t).count i = f a ^ m * ∏ i in s, f i ^ t.count i
     · rw [this.1, this.2, Nat.cast_mul]
       ring_nf
-    rw [Finset.mem_multichoose_iff] at ht
+    rw [mem_multichoose_iff] at ht
     -- `s` is a disjoint union of `t` and `{a}`.
     have hat : a ∉ t := fun h ↦ ha (ht.2 a h)
     have hs_ne : ∀ i ∈ s, i ≠ a := fun i his hia ↦ by rw [hia] at his; exact ha his
@@ -299,10 +319,10 @@ theorem pow_sum {p : ℕ} {s : Finset α} {f : α → A} :
         rw [Multiset.filter_eq_self.mpr (fun u hu ↦ ne_of_mem_of_not_mem hu hat)]
         rw [zero_add]
     · -- Split the product.
-      rw [Finset.prod_insert ha]
-      refine congrArg₂ _ ?_ (Finset.prod_congr rfl ?_)
+      rw [prod_insert ha]
+      refine congrArg₂ _ ?_ (prod_congr rfl ?_)
       · simp [hat]
       · intro i hi
         simp [Multiset.count_replicate, hs_ne i hi]
 
-end Finset
+end Sum
