@@ -81,7 +81,7 @@ lemma decay_of_decay₁ {f : E → F}
   specialize hC x
   refine le_trans ?_ hC
   refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg _)
-  simp [pow_le_pow_of_le_left]
+  simp [pow_le_pow_left]
 
 /- Re-arranged version of `decay₁`. -/
 lemma norm_iteratedFDeriv_le_pow_one_add_norm (f : 𝓢(E, F)) (r : ℝ) :
@@ -118,7 +118,7 @@ lemma pow_norm_iteratedFDeriv_le_pow_one_add_norm (f : 𝓢(E, F)) {p : ℝ} (hp
   generalize hr : q / p = r
   rcases norm_iteratedFDeriv_le_pow_one_add_norm f r n with ⟨C, ⟨hC_nonneg, hC⟩⟩
   use C ^ p
-  have hC_pow : 0 ≤ C ^ p := Real.rpow_nonneg_of_nonneg hC_nonneg _
+  have hC_pow : 0 ≤ C ^ p := Real.rpow_nonneg hC_nonneg _
   refine And.intro hC_pow ?_
   intro x
   specialize hC x
@@ -127,7 +127,7 @@ lemma pow_norm_iteratedFDeriv_le_pow_one_add_norm (f : 𝓢(E, F)) {p : ℝ} (hp
   have hb_pos : 0 < 1 + ‖x‖
   . exact add_pos_of_pos_of_nonneg zero_lt_one (norm_nonneg _)
   rw [mul_comm p r, ← neg_mul, Real.rpow_mul hb_pos.le]
-  rw [← Real.mul_rpow hC_nonneg (Real.rpow_nonneg_of_nonneg hb_pos.le _)]
+  rw [← Real.mul_rpow hC_nonneg (Real.rpow_nonneg hb_pos.le _)]
   exact Real.rpow_le_rpow (norm_nonneg _) hC hp.le
 
 /- Simple version of `pow_norm_iteratedFDeriv_le_pow_one_add_norm` with `q = -1`. -/
@@ -248,7 +248,7 @@ lemma integrable_norm_pow_smul {n : ℕ} {f : 𝓢(E, F)} : Integrable fun x => 
     simp [norm_smul]
     refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg (f x))
     rw [abs_of_nonneg (by simp)]
-    refine pow_le_pow_of_le_left ?_ ?_ _ <;> simp
+    refine pow_le_pow_left ?_ ?_ _ <;> simp
 
 lemma integrable_norm_pow_mul_norm {n : ℕ} {f : 𝓢(E, F)} : Integrable fun x => ‖x‖ ^ n * ‖f x‖ := by
   refine And.intro ?_ ?_
@@ -263,7 +263,7 @@ lemma integrable_norm_pow_mul_norm {n : ℕ} {f : 𝓢(E, F)} : Integrable fun x
     simp [norm_smul]
     refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg (f x))
     rw [abs_of_nonneg (by simp)]
-    refine pow_le_pow_of_le_left ?_ ?_ _ <;> simp
+    refine pow_le_pow_left ?_ ?_ _ <;> simp
 
 /--
 Schwartz maps in `𝓢(E, F)` are in `Lp` for `p ∈ (0, ∞)` and finite-dimensional `E`.
@@ -362,7 +362,7 @@ lemma pow_norm_mul_norm_le_two_pow_sup_Iic_seminorm {k : ℕ} {f : 𝓢(E, F)} (
     ‖x‖ ^ k * ‖f x‖ ≤ ↑2 ^ k * sup_Iic_seminorm 𝕜 k 0 f := by
   refine le_trans ?_ (pow_one_add_norm_mul_norm_le_two_pow_sup_Iic_seminorm k f x)
   refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg _)
-  refine pow_le_pow_of_le_left ?_ ?_ k <;> simp
+  refine pow_le_pow_left ?_ ?_ k <;> simp
 end Explicit
 
 -- Re-arrange as upper bound of a function by a function.

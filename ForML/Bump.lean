@@ -8,7 +8,7 @@ https://proofwiki.org/wiki/Definition:Test_Function
 import Mathlib.Algebra.Algebra.NonUnitalSubalgebra
 import Mathlib.Algebra.Module.Submodule.Basic
 import Mathlib.Algebra.Ring.Defs
-import Mathlib.Analysis.Calculus.ContDiff
+import Mathlib.Analysis.Calculus.ContDiff.Basic
 import Mathlib.MeasureTheory.Function.L1Space
 import Mathlib.MeasureTheory.Function.LocallyIntegrable
 import Mathlib.MeasureTheory.Integral.Bochner
@@ -41,7 +41,7 @@ lemma bounded {f : α → ℝ} (hf : IsBump f) : ∃ C, ∀ x, ‖f x‖ ≤ C :
 lemma comp_neg {f : α → ℝ} (hf : IsBump f) : IsBump (fun (x : α) => f (-x)) := by
   constructor
   . have h_neg {x : α} : -x = (Homeomorph.neg α) x := by simp [Homeomorph.neg]
-    simp [h_neg]
+    simp_rw [h_neg]
     exact HasCompactSupport.comp_homeomorph hf.left _
   . exact ContDiff.comp hf.right contDiff_neg
 
@@ -117,7 +117,7 @@ namespace Bump
 variable {α : Type*} [NormedAddCommGroup α] [NormedSpace ℝ α]
 variable [mα : MeasureSpace α] [OpensMeasurableSpace α] [IsLocallyFiniteMeasure mα.volume]
 
-instance funLike : FunLike (Bump α) α (fun _ => ℝ) where
+instance funLike : FunLike (Bump α) α ℝ where
   coe f := f.val
   coe_injective' f g := by simp
 

@@ -130,7 +130,7 @@ lemma Real.fderiv_fourierChar_apply {x dx : ℝ} :
 
 lemma Real.fderiv_fourierChar {x : ℝ} :
     fderiv ℝ (fun x => Real.fourierChar[(x : ℝ)]) x =
-    (2 * π * Complex.I * Real.fourierChar[x]) • Complex.ofRealClm := by
+    (2 * π * Complex.I * Real.fourierChar[x]) • Complex.ofRealCLM := by
   refine ContinuousLinearMap.ext ?_
   intro dx
   rw [fderiv_fourierChar_apply]

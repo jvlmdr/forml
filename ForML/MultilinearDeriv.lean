@@ -13,8 +13,8 @@ variable [NormedAddCommGroup E] [NormedSpace 𝕜 E]
 variable [NormedAddCommGroup F] [NormedSpace 𝕜 F]
 variable [NormedAddCommGroup G] [NormedSpace 𝕜 G]
 
--- -- Help (sometimes?) needed for `ContinuousLinearMap.op_norm_comp_le` in `norm_iteratedFDeriv_clm_comp_const`.
--- noncomputable instance : NormedAddCommGroup (E →L[𝕜] G) := ContinuousLinearMap.toNormedAddCommGroup
+-- Help (sometimes?) needed for `ContinuousLinearMap.op_norm_comp_le` in `norm_iteratedFDeriv_clm_comp_const`.
+noncomputable instance : NormedAddCommGroup (E →L[𝕜] G) := ContinuousLinearMap.toNormedAddCommGroup
 
 -- While this is a one-line proof, it has the convenience of not introducing the second term.
 lemma HasFDerivAt.clm_apply_const {c : α → F →L[𝕜] G} {v : F} {c' : α →L[𝕜] F →L[𝕜] G} {x : α} (hc : HasFDerivAt c c' x) :

@@ -17,6 +17,9 @@ open Filter MeasureTheory Real
 -- Sequence of Gaussian functions that converges to Diract delta; with integral one (for 0 < b).
 noncomputable def DiracSeq (b x : ℝ) : ℝ := b / sqrt π * rexp (-(b * x)^2)
 
+-- Sequence of Gaussian functions that converges to Diract delta; with integral one (for 0 < b).
+lemma DiracSeq.def : DiracSeq = fun b x ↦ b / sqrt π * rexp (-(b * x) ^ 2) := rfl
+
 -- Can be handy for converting `HPow ℝ ℝ ℝ` to `HPow ℝ ℕ ℝ`.
 lemma rpow_to_npow {r : ℝ} (n : ℕ) (h : r = ↑n) (x : ℝ) : x ^ r = HPow.hPow x n := by simp [h]
 -- lemma npow_to_rpow {n : ℕ} (x : ℝ) : HPow.hPow x n = x ^ (n : ℝ) := by simp
@@ -39,7 +42,6 @@ lemma DiracSeq.continuous {b : ℝ} : Continuous (DiracSeq b) := by
   refine Continuous.mul continuous_const ?_
   refine Continuous.exp ?_
   refine Continuous.neg ?_
-  simp [rpow_to_npow 2]
   refine Continuous.pow ?_ 2
   refine Continuous.mul continuous_const continuous_id
 
@@ -115,7 +117,7 @@ lemma DiracSeq.intervalIntegral_comp_mul (s a b : ℝ)
 lemma DiracSeq.setIntegral_comp_mul {k : ℝ} (hk : 0 < k) {s : Set ℝ} (hs : MeasurableSet s)
     : ∫ x in s, DiracSeq k x =
       ∫ x in (fun u => k * u) '' s, DiracSeq 1 x := by
-  rw [@integral_image_eq_integral_abs_deriv_smul _ _ _ _ _ (fun _ => k : ℝ → ℝ) _ hs]
+  rw [@integral_image_eq_integral_abs_deriv_smul _ _ _ _ _ (fun _ => k : ℝ → ℝ) hs]
   rotate_left
   . intro x _
     simp [mul_comm k]
@@ -134,7 +136,7 @@ lemma DiracSeq.setIntegral_comp_mul {k : ℝ} (hk : 0 < k) {s : Set ℝ} (hs : M
   rfl
 
 lemma DiracSeq.support {b : ℝ} (hb : b ≠ 0) : Function.support (DiracSeq b) = Set.univ := by
-  simp [DiracSeq]
+  simp [DiracSeq.def]
   ext x
   simp [hb, sqrt_pi_pos.ne']
   rw [← ne_eq]

@@ -1,8 +1,8 @@
 import Mathlib.Analysis.Distribution.SchwartzSpace
 import Mathlib.MeasureTheory.Integral.Bochner
 
-import ForML.SchwartzLp
 import ForML.HasTemperateGrowth
+import ForML.SchwartzLp
 
 open MeasureTheory SchwartzSpace RealInnerProductSpace
 open scoped Real Complex

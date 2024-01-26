@@ -34,6 +34,12 @@ theorem ContinuousMultilinearMap.integral_apply {c : α → ContinuousMultilinea
   rw [ContinuousLinearMap.integral_comp_comm _ hc]
   rfl
 
+theorem ContinuousMultilinearMap.integrable_of_integrable_apply {c : α → ContinuousMultilinearMap ℝ D F}
+    {μ : Measure α} (hc : ∀ m, Integrable (fun x => c x m) μ) :
+    Integrable c μ := by
+
+  sorry
+
 end Fintype
 
 

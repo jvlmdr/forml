@@ -51,7 +51,7 @@ lemma Finset.sum_range_choose_smul_le_pow_two_smul {R : Type*} [OrderedAddCommMo
   rw [Finset.sum_smul]
   refine Finset.sum_le_sum ?_
   intro i hi
-  exact smul_le_smul_of_nonneg (h i hi) (Nat.zero_le _)
+  exact smul_le_smul_of_nonneg_left (h i hi) (Nat.zero_le _)
 
 /-- Convenient lemma for bounding `choose` sums.
 
@@ -87,12 +87,25 @@ lemma bound_forall_range (n : ℕ) {f : ℕ → E → ℝ}
     | inl hi =>
       specialize hC_i i hi x
       refine le_trans hC_i ?_
-      refine mul_le_mul ?_ (pow_le_pow ?_ ?_) ?_ (le_trans hC_i_nonneg ?_) <;> simp
+      refine mul_le_mul ?_ (pow_le_pow_right ?_ ?_) ?_ (le_trans hC_i_nonneg ?_) <;> simp
     | inr hi =>
       rw [hi]
       specialize hC_m x
       refine le_trans hC_m ?_
-      refine mul_le_mul ?_ (pow_le_pow ?_ ?_) ?_ (le_trans hC_i_nonneg ?_) <;> simp
+      refine mul_le_mul ?_ (pow_le_pow_right ?_ ?_) ?_ (le_trans hC_i_nonneg ?_) <;> simp
+
+lemma bound_forall {ι : Type*} (s : Finset ι) {f : ι → E → ℝ}
+    (h : ∀ i ∈ s, ∃ (k : ℕ) (C : ℝ), ∀ x, f i x ≤ C * (1 + ‖x‖) ^ k) :
+    ∃ (k : ℕ) (C : ℝ), 0 ≤ C ∧ ∀ i ∈ s, ∀ x, f i x ≤ C * (1 + ‖x‖) ^ k := by
+  -- refine bound_forall_range s.card ?_
+  -- intro i hi
+  -- rcases Finset.mem_range.mp hi with ⟨i, hi⟩
+  -- specialize h i ?_
+  -- . exact Finset.mem_range.mpr ⟨i, hi⟩
+  -- rcases h with ⟨k, C, ⟨_, hC⟩⟩
+  -- refine ⟨k, C, ?_⟩
+  -- exact hC
+  sorry
 
 /-- Take maximum `k` and maximum `C` to obtain bound on derivatives of `g` for all `i < n`. -/
 lemma Function.HasTemperateGrowth.bound_forall_range (n : ℕ) {f : E → F} (hf : HasTemperateGrowth f) :
@@ -165,7 +178,7 @@ theorem HasTemperateGrowth.comp
   . intro i hi
     refine le_trans (hC_g i hi (f x)) ?_
     refine mul_le_mul_of_nonneg_left ?_ hC_g_nonneg
-    exact pow_le_pow_of_le_left (by simp) hf0 k_g
+    exact pow_le_pow_left (by simp) hf0 k_g
   -- Bound derivatives of `f` at `x` by non-zero powers of `D`.
   have hD : ∀ i, 1 ≤ i → i ≤ n → ‖iteratedFDeriv ℝ i f x‖ ≤ (max 1 C_f * (1 + ‖x‖) ^ k_f) ^ i
   . intro i _ hi
@@ -300,11 +313,11 @@ lemma hasTemperateGrowth_clm (a : E →L[ℝ] F) : HasTemperateGrowth fun x => a
   hasTemperateGrowth_id.clm a
 
 lemma hasTemperateGrowth_neg : HasTemperateGrowth fun x : E => (-x) := hasTemperateGrowth_clm (-ContinuousLinearMap.id ℝ E)
-lemma hasTemperateGrowth_re : HasTemperateGrowth fun x : ℂ => x.re := hasTemperateGrowth_clm Complex.reClm
-lemma hasTemperateGrowth_im : HasTemperateGrowth fun x : ℂ => x.im := hasTemperateGrowth_clm Complex.imClm
+lemma hasTemperateGrowth_re : HasTemperateGrowth fun x : ℂ => x.re := hasTemperateGrowth_clm Complex.reCLM
+lemma hasTemperateGrowth_im : HasTemperateGrowth fun x : ℂ => x.im := hasTemperateGrowth_clm Complex.imCLM
 
-lemma HasTemperateGrowth.re {f : E → ℂ} (hf : HasTemperateGrowth f) : HasTemperateGrowth fun x => (f x).re := clm Complex.reClm hf
-lemma HasTemperateGrowth.im {f : E → ℂ} (hf : HasTemperateGrowth f) : HasTemperateGrowth fun x => (f x).im := clm Complex.imClm hf
+lemma HasTemperateGrowth.re {f : E → ℂ} (hf : HasTemperateGrowth f) : HasTemperateGrowth fun x => (f x).re := clm Complex.reCLM hf
+lemma HasTemperateGrowth.im {f : E → ℂ} (hf : HasTemperateGrowth f) : HasTemperateGrowth fun x => (f x).im := clm Complex.imCLM hf
 lemma HasTemperateGrowth.neg {f : E → F} (hf : HasTemperateGrowth f) : HasTemperateGrowth fun x => (-f x) := clm (-ContinuousLinearMap.id ℝ F) hf
 
 section Mul
@@ -367,10 +380,10 @@ theorem HasTemperateGrowth.add
   refine add_le_add ?_ ?_
   . refine le_trans (hC_f x) ?_
     refine mul_le_mul_of_nonneg_left ?_ hC_f_nonneg
-    exact pow_le_pow (by simp) (by simp)
+    exact pow_le_pow_right (by simp) (by simp)
   . refine le_trans (hC_g x) ?_
     refine mul_le_mul_of_nonneg_left ?_ hC_g_nonneg
-    exact pow_le_pow (by simp) (by simp)
+    exact pow_le_pow_right (by simp) (by simp)
 
 lemma HasTemperateGrowth.sub
       {f : E → F} (hf : HasTemperateGrowth f)
@@ -468,5 +481,22 @@ lemma HasTemperateGrowth.mul
   bilin (ContinuousLinearMap.mul ℝ F) hf hg
 
 end Mul
+
+section Prod
+
+variable {ι : Type*} [DecidableEq ι]
+variable {E : Type*}
+variable [NormedAddCommGroup E] [NormedSpace ℝ E]
+
+lemma HasTemperateGrowth.prod (s : Finset ι) {f : ι → E → ℝ}
+    (hf : ∀ i ∈ s, HasTemperateGrowth (f i)) :
+    HasTemperateGrowth (fun x => ∏ i in s, f i x) := by
+  induction s using Finset.induction with
+  | empty => simp [hasTemperateGrowth_const]
+  | @insert i s hi IH =>
+    simp only [Finset.mem_insert, forall_eq_or_imp] at hf
+    simpa [Finset.prod_insert hi] using HasTemperateGrowth.mul hf.1 (IH hf.2)
+
+end Prod
 
 end Function  -- namespace
