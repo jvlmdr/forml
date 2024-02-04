@@ -81,10 +81,12 @@ variable {𝕜 G}
 theorem ContinuousMultilinearMap.mkPiFieldL_apply {z : G} :
     mkPiFieldL 𝕜 G z = ContinuousMultilinearMap.mkPiField 𝕜 ι z := rfl
 
-theorem ContinuousMultilinearMap.mkPiField_continuous : Continuous fun z : G ↦ ContinuousMultilinearMap.mkPiField 𝕜 ι z :=
+theorem ContinuousMultilinearMap.mkPiField_continuous :
+    Continuous fun z : G ↦ ContinuousMultilinearMap.mkPiField 𝕜 ι z :=
   (mkPiFieldL 𝕜 G).continuous
 
--- theorem Continuous.continuousMultilinearMap_mkPiField {α : Type*} [TopologicalSpace α] {f : α → G} (hf : Continuous f) :
+-- theorem Continuous.continuousMultilinearMap_mkPiField
+--     {α : Type*} [TopologicalSpace α] {f : α → G} (hf : Continuous f) :
 --     Continuous (fun x ↦ ContinuousMultilinearMap.mkPiField 𝕜 ι (f x)) :=
 --   .comp ContinuousMultilinearMap.mkPiField_continuous hf
 
@@ -268,7 +270,8 @@ continuous version of `MultilinearMap.domDomCongrLinearEquiv'`;
 isometric version of `ContinuousMultilinearMap.domDomCongrEquiv`.
 -/
 def domDomCongrₗᵢ' (σ : ι ≃ ι') :
-    ContinuousMultilinearMap 𝕜 D F ≃ₗᵢ[𝕜] ContinuousMultilinearMap 𝕜 (fun i' : ι' ↦ D (σ.symm i')) F where
+    ContinuousMultilinearMap 𝕜 D F ≃ₗᵢ[𝕜]
+      ContinuousMultilinearMap 𝕜 (fun i' : ι' ↦ D (σ.symm i')) F where
   toLinearEquiv := domDomCongrLinearEquiv' 𝕜 𝕜 D F σ
   norm_map' := norm_domDomCongrLinearEquiv' σ
 
@@ -353,12 +356,7 @@ theorem ContinuousMultilinearMap.continuous_compContinuousLinearMapL_fin :
   simp only [dist_eq_norm_sub]
   intro f
   induction n with
-  | zero =>
-    intro ε hε
-    use 1
-    refine And.intro zero_lt_one ?_
-    intro g _
-    simp [Subsingleton.elim f g, hε]
+  | zero => exact fun ε hε ↦ ⟨1, ⟨zero_lt_one, fun g _ ↦ by simp [Subsingleton.elim f g, hε]⟩⟩
   | succ n IH =>
     intro ε hε_pos
     /-
@@ -431,24 +429,24 @@ theorem ContinuousMultilinearMap.continuous_compContinuousLinearMapL_fin :
     rw [ContinuousLinearMap.op_norm_le_iff (add_nonneg hC₁_nonneg hC₂_nonneg)]
     intro q
     rw [op_norm_le_iff _ (mul_nonneg (add_nonneg hC₁_nonneg hC₂_nonneg) (norm_nonneg q))]
-    intro m
+    intro x
     simp only [ContinuousLinearMap.sub_apply, compContinuousLinearMapL_apply]
     simp only [sub_apply, compContinuousLinearMap_apply]
     -- TODO: Add identity for `ContinuousMultilinearMap` that captures this step?
     refine le_trans (norm_sub_le_norm_sub_add_norm_sub
-      _ (q (Fin.cons (g 0 (m 0)) fun i ↦ f i.succ (m i.succ))) _) ?_
+      _ (q (Fin.cons (g 0 (x 0)) fun i ↦ f i.succ (x i.succ))) _) ?_
     simp only [add_mul]
     refine add_le_add ?_ ?_
-    · rw [← Fin.cons_self_tail (fun i ↦ (g i) (m i))]
+    · rw [← Fin.cons_self_tail (fun i ↦ (g i) (x i)), Fin.tail_def]
       specialize IH (fun i : Fin n ↦ g i.succ) (lt_of_lt_of_le hgf.2 hδ)
       replace IH := le_of_lt IH
       -- TODO: Apply inverse operations to goal instead?
       rw [ContinuousLinearMap.op_norm_le_iff hε₁_pos.le] at IH
       have he_q := continuousMultilinearCurryLeftEquiv_symm_apply q
       generalize (continuousMultilinearCurryLeftEquiv 𝕜 E₁ G).symm = e at he_q
-      specialize IH ((e q) (g 0 (m 0)))
+      specialize IH ((e q) (g 0 (x 0)))
       rw [op_norm_le_iff _ (mul_nonneg hε₁_pos.le (norm_nonneg _))] at IH
-      specialize IH (fun i : Fin n ↦ m i.succ)
+      specialize IH (fun i : Fin n ↦ x i.succ)
       simp only [ContinuousLinearMap.sub_apply, compContinuousLinearMapL_apply, sub_apply,
         compContinuousLinearMap_apply, he_q] at IH
       refine le_trans IH ?_
@@ -456,7 +454,7 @@ theorem ContinuousMultilinearMap.continuous_compContinuousLinearMapL_fin :
       simp only [mul_assoc]
       refine mul_le_mul_of_nonneg_left ?_ hε₁_pos.le
       simp only [Fin.prod_univ_succ]
-      suffices : ‖(e q) (g 0 (m 0))‖ ≤ ‖q‖ * ((δ + ‖f 0‖) * ‖m 0‖)
+      suffices : ‖(e q) (g 0 (x 0))‖ ≤ ‖q‖ * ((δ + ‖f 0‖) * ‖x 0‖)
       · exact le_trans
           (mul_le_mul_of_nonneg_right this (Finset.prod_nonneg fun _ _ ↦ norm_nonneg _))
           (le_of_eq (by ring))
@@ -469,18 +467,17 @@ theorem ContinuousMultilinearMap.continuous_compContinuousLinearMapL_fin :
       rw [add_comm, norm_sub_rev]
       exact add_le_add_right hgf.1.le _
 
-    · -- TODO: Ugly to specify unused value (0) here. Nicer way to obtain this result?
-      have := map_sub q (Fin.cons 0 fun i ↦ f i.succ (m i.succ)) 0 (g 0 (m 0)) (f 0 (m 0))
-      simp only [Fin.update_cons_zero] at this
-      rw [← Fin.cons_self_tail (fun i ↦ (f i) (m i)), Fin.tail_def, ← this]
+    · rw [← Fin.cons_self_tail (fun i ↦ (f i) (x i)), Fin.tail_def]
+      simp (config := {singlePass := true}) only [← Fin.update_cons_zero 0]
+      rw [← map_sub]
       refine le_trans (le_op_norm _ _) ?_
       rw [mul_comm _ ‖q‖]
       simp only [mul_assoc]
       refine mul_le_mul_of_nonneg_left ?_ (norm_nonneg q)
       simp only [Fin.prod_univ_succ, Fin.cons_zero, Fin.cons_succ]
       rw [← ContinuousLinearMap.sub_apply, ← hC₂_def]
-      suffices : ‖(g 0 - f 0) (m 0)‖ ≤ δ * ‖m 0‖ ∧
-          ∏ i : Fin n, ‖f i.succ (m i.succ)‖ ≤ (∏ i : Fin n, ‖f i.succ‖) * ∏ i : Fin n, ‖m i.succ‖
+      suffices : ‖(g 0 - f 0) (x 0)‖ ≤ δ * ‖x 0‖ ∧
+          ∏ i : Fin n, ‖f i.succ (x i.succ)‖ ≤ (∏ i : Fin n, ‖f i.succ‖) * ∏ i : Fin n, ‖x i.succ‖
       · exact le_trans
           (mul_le_mul this.1 this.2 (Finset.prod_nonneg fun _ _ ↦ norm_nonneg _)
             (mul_nonneg hδ_pos.le (norm_nonneg _)))
