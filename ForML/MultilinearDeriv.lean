@@ -2,6 +2,7 @@ import Mathlib.Analysis.Calculus.ContDiff.Basic
 import Mathlib.Analysis.Calculus.ContDiff.Bounds
 
 import ForML.ContinuousLinearMapCo
+import ForML.ContinuousMultilinearMap
 
 
 section Simple
@@ -92,28 +93,6 @@ variable [NormedAddCommGroup F] [NormedSpace 𝕜 F]
 variable [NormedAddCommGroup G] [NormedSpace 𝕜 G]
 
 section Apply
-namespace ContinuousMultilinearMap
-
-section Def
-variable (𝕜 D G)
-
-/--
-The application of a multilinear map as a `ContinuousLinearMap`.
-(Not a bilinear map like `ContinuousLinearMap.apply` due to multilinearity with respect to `x`.)
--/
-def apply (x : ∀ i, D i) : ContinuousMultilinearMap 𝕜 D G →L[𝕜] G where
-  toFun c := c x
-  map_add' _ _ := rfl
-  map_smul' _ _ := rfl
-  cont := continuous_eval_left x
-
-end Def
-
-@[simp]
-lemma apply_apply {x : ∀ i, D i} {c : ContinuousMultilinearMap 𝕜 D G} :
-    (apply 𝕜 D G x) c = c x := rfl
-
-end ContinuousMultilinearMap  -- namespace
 
 theorem Continuous.continuousMultilinear_apply_const {c : α → ContinuousMultilinearMap 𝕜 D G} {u : ∀ i, D i} (hc : Continuous c) :
     Continuous (fun y => (c y) u) := by

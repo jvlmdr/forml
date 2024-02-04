@@ -282,3 +282,15 @@ theorem intervalIntegral.integral_smul_deriv_eq_deriv_smul {u u' : ℝ → S} {v
   integral_bilin_deriv_eq_deriv_bilin (ContinuousLinearMap.smulBilin ℝ S G).flip hu hv hu' hv'
 
 end Parts
+
+
+section LinearInner
+
+variable {𝕜 : Type*} [IsROrC 𝕜] {E : Type*} [NormedAddCommGroup E] [InnerProductSpace 𝕜 E]
+
+variable (𝕜)
+
+theorem norm_innerSL_le_one : ‖innerSL 𝕜 (E := E)‖ ≤ 1 := by
+  simp [ContinuousLinearMap.op_norm_le_iff]
+
+end LinearInner

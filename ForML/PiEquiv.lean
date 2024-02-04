@@ -7,6 +7,129 @@ import Mathlib.MeasureTheory.Constructions.Prod.Integral
 open MeasureTheory
 
 
+-- Written for `ContinuousMultilinearMap.piCongrLeft`.
+-- No longer needed; used `LinearIsometryEquiv.coe_piCongrLeft_symm'` instead.
+section PiCongr
+
+namespace LinearEquiv
+
+variable {R : Type*} [Semiring R]
+variable {ι ι' : Type*}
+variable {φ : ι → Type*} [(i : ι) → AddCommMonoid (φ i)] [(i : ι) → Module R (φ i)]
+
+variable (R φ)  -- Follow e.g. `LinearEquiv.piCongrLeft'_apply`
+
+-- Complements to existing `LinearEquiv.piCongrLeft'_apply`
+
+@[simp]
+theorem piCongrLeft'_symm_apply_apply {e : ι ≃ ι'} {x : (i : ι') → φ (e.symm i)} {i' : ι'} :
+    (piCongrLeft' R φ e).symm x (e.symm i') = x i' :=
+  Equiv.piCongrLeft'_symm_apply_apply φ e x i'
+
+@[simp]
+theorem piCongrLeft_apply_apply {e : ι' ≃ ι} {x : (i' : ι') → φ (e i')} {i' : ι'} :
+    (piCongrLeft R φ e) x (e i') = x i' :=
+  Equiv.piCongrLeft_apply_apply φ e x i'
+
+@[simp]
+theorem piCongrLeft_symm_apply {e : ι' ≃ ι} {x : (i : ι) → φ i} {i' : ι'} :
+    (piCongrLeft R φ e).symm x i' = x (e i') :=
+  Equiv.piCongrLeft_symm_apply φ e x i'
+
+-- These rewrites are useful for using `Function.piCongrLeft'_symm_update`.
+
+theorem coe_piCongrLeft' (e : ι ≃ ι') :
+    ⇑(piCongrLeft' R φ e) = ⇑(Equiv.piCongrLeft' φ e) := rfl
+
+theorem coe_piCongrLeft'_symm (e : ι ≃ ι') :
+    ⇑(piCongrLeft' R φ e).symm = ⇑(Equiv.piCongrLeft' φ e).symm := rfl
+
+theorem coe_piCongrLeft (e : ι' ≃ ι) :
+    ⇑(piCongrLeft R φ e) = ⇑(Equiv.piCongrLeft φ e) := rfl
+
+theorem coe_piCongrLeft_symm (e : ι' ≃ ι) :
+    ⇑(piCongrLeft R φ e).symm = ⇑(Equiv.piCongrLeft φ e).symm := rfl
+
+theorem piCongrLeft'_toEquiv (e : ι ≃ ι') :
+    (piCongrLeft' R φ e).toEquiv = Equiv.piCongrLeft' φ e := rfl
+
+
+end LinearEquiv
+
+namespace LinearIsometryEquiv
+
+variable {R : Type*} [Semiring R]
+variable {ι ι' : Type*} [Fintype ι] [Fintype ι']
+variable {φ : ι → Type*} [∀ i, SeminormedAddCommGroup (φ i)] [∀ i, Module R (φ i)]
+
+-- def piCongrLeft (e : ι' ≃ ι) : ((i' : ι') → φ (e i')) ≃ₗᵢ[R] (i : ι) → φ i where
+--   toLinearEquiv := LinearEquiv.piCongrLeft R φ e
+--   norm_map' x := by
+--     simp [Pi.norm_def]
+--     rw [← Finset.univ_map_equiv_to_embedding e.symm]
+--     rw [Finset.sup_map]
+--     simp [Function.comp_def]
+--     sorry
+
+variable (R φ)
+
+def piCongrLeft' (e : ι ≃ ι') : ((i' : ι) → φ i') ≃ₗᵢ[R] (i : ι') → φ (e.symm i) where
+  toLinearEquiv := LinearEquiv.piCongrLeft' R φ e
+  norm_map' x := by
+    simp only [Pi.norm_def]
+    rw [← Finset.univ_map_equiv_to_embedding e.symm, Finset.sup_map]
+    simp [Function.comp_def]
+
+def piCongrLeft (e : ι' ≃ ι) : ((i' : ι') → φ (e i')) ≃ₗᵢ[R] (i : ι) → φ i := (piCongrLeft' R φ e.symm).symm
+
+-- theorem piCongrLeft_eq {e : ι' ≃ ι} :
+--     piCongrLeft R φ e = (piCongrLeft' R φ e.symm).symm := rfl
+
+-- theorem piCongrLeft_symm_eq {e : ι' ≃ ι} :
+--     (piCongrLeft R φ e).symm = (piCongrLeft' R φ e.symm) := rfl
+
+-- -- rhs has `e.symm.symm`!
+-- theorem piCongrLeft_symm_eq {e : ι' ≃ ι} :
+--     (piCongrLeft R φ e).symm = piCongrLeft' R φ e.symm := rfl
+
+-- theorem piCongrLeft_symm_eq' {e : ι' ≃ ι} :
+--     (piCongrLeft R φ e.symm) = (piCongrLeft' R φ e).symm := rfl
+
+-- theorem piCongrLeft_symm_eq'' {e : ι' ≃ ι} :
+--     (piCongrLeft R φ e.symm).symm = (piCongrLeft' R φ e) := rfl
+
+-- def piCongrLeft (e : ι' ≃ ι) : ((i' : ι') → φ (e i')) ≃ₗᵢ[R] (i : ι) → φ i where
+--   toLinearEquiv := LinearEquiv.piCongrLeft R φ e
+--   norm_map' x := by
+--     simp only [Pi.norm_def]
+--     rw [← Finset.univ_map_equiv_to_embedding e, Finset.sup_map]
+--     simp [Function.comp_def, LinearEquiv.piCongrLeft_apply_apply]
+
+@[simp]
+theorem piCongrLeft'_apply {e : ι ≃ ι'} {x : (i : ι) → φ i} {i' : ι'} :
+    (piCongrLeft' R φ e) x i' = x (e.symm i') :=
+  Equiv.piCongrLeft'_apply φ e x i'
+
+@[simp]
+theorem piCongrLeft'_symm_apply_apply {e : ι ≃ ι'} {x : (i' : ι') → φ (e.symm i')} {i' : ι'} :
+    (piCongrLeft' R φ e).symm x (e.symm i') = x i' :=
+  Equiv.piCongrLeft'_symm_apply_apply φ e x i'
+
+@[simp]
+theorem piCongrLeft_apply_apply {e : ι' ≃ ι} {x : (i' : ι') → φ (e i')} {i' : ι'} :
+    (piCongrLeft R φ e) x (e i') = x i' :=
+  Equiv.piCongrLeft_apply_apply φ e x i'
+
+@[simp]
+theorem piCongrLeft_symm_apply {e : ι' ≃ ι} {x : (i : ι) → φ i} {i' : ι'} :
+    (piCongrLeft R φ e).symm x i' = x (e i') :=
+  Equiv.piCongrLeft_symm_apply φ e x i'
+
+end LinearIsometryEquiv
+
+end PiCongr
+
+
 section ContinuousLinear
 
 variable {ι 𝕜 : Type*}

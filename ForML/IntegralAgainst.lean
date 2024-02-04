@@ -3,6 +3,7 @@ import Mathlib.MeasureTheory.Integral.Bochner
 
 import ForML.HasTemperateGrowth
 import ForML.SchwartzLp
+import ForML.Util
 
 open MeasureTheory SchwartzSpace RealInnerProductSpace
 open scoped Real Complex
@@ -147,14 +148,6 @@ lemma fderiv_innerSL_apply {x : E} : fderiv ℝ (fun x : E => innerSL ℝ x) x =
   rw [ContinuousLinearMap.comp_apply]
   rfl
 
-lemma norm_innerSL_le : ‖innerSL ℝ (E := E)‖ ≤ 1 := by
-  rw [ContinuousLinearMap.norm_def]  -- Need explicit `NormedSpace` instance for these rewrites.
-  simp
-  -- Rather than trying to prove, just steal this result from the id map.
-  have : ‖ContinuousLinearMap.id ℝ E‖ ≤ 1 := ContinuousLinearMap.norm_id_le
-  rw [ContinuousLinearMap.norm_def] at this
-  simpa using this
-
 -- The function `x ↦ (u ↦ ⟪x, u⟫)` is a `HasTemperateGrowth` function.
 lemma Function.hasTemperateGrowth_innerSL : HasTemperateGrowth fun x : E => innerSL ℝ x := by
   refine ⟨contDiff_const.clm_apply contDiff_id, ?_⟩
@@ -170,7 +163,7 @@ lemma Function.hasTemperateGrowth_innerSL : HasTemperateGrowth fun x : E => inne
     cases n with
     | zero =>
       simp
-      refine le_trans norm_innerSL_le (by simp)
+      refine le_trans (norm_innerSL_le_one ℝ) (by simp)
     | succ n =>
       rw [iteratedFDeriv_const_of_ne]
       . change ‖0‖ ≤ _
@@ -178,16 +171,17 @@ lemma Function.hasTemperateGrowth_innerSL : HasTemperateGrowth fun x : E => inne
       . simp
 
 /-- CLM that represents `x ↦ ⟪x, u⟫ • c` as a CLM `F →L[ℝ] E →L[ℝ] F` (could make first map linear too?). -/
-noncomputable def innerSL_smul
-    (F : Type*) [NormedAddCommGroup F] [NormedSpace ℝ F]
-    (x : E) : F →L[ℝ] E →L[ℝ] F :=
-  ContinuousLinearMap.smulRightL ℝ E F (innerSL ℝ x)
+noncomputable def innerSL_smul (F : Type*) [NormedAddCommGroup F] [NormedSpace ℝ F] (x : E) :
+    F →L[ℝ] E →L[ℝ] F :=
+  .smulRightL ℝ E F (innerSL ℝ x)
 
 lemma innerSL_smul_apply {x u : E} {c : F} : (innerSL_smul F x) c u = ⟪x, u⟫ • c := rfl
 
 lemma innerSL_smul_comm {x u : E} {c : F} : (innerSL_smul F x) c u = (innerSL_smul F u) c x := by
   simp [innerSL_smul_apply]
   rw [real_inner_comm]
+
+-- TODO: Can we use `hasTemperateGrowth_smul` to reduce extra definitions?
 
 lemma Function.hasTemperateGrowth_innerSL_smul
     (F : Type*) [NormedAddCommGroup F] [NormedSpace ℝ F] :

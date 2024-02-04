@@ -318,6 +318,7 @@ lemma norm_toL1_eq_integral (f : 𝓢(E, F)) : ‖toL1 f‖ = ∫ x, ‖f x‖ :
   rw [integral_norm_eq_lintegral_nnnorm f.continuous.aestronglyMeasurable]
 
 -- Use `Memℒp f 1` to provide `Integrable`.
+@[simp]
 lemma integrable (f : 𝓢(E, F)) : Integrable (fun x => f x) := by
   rw [← memℒp_one_iff_integrable]
   exact memℒp f 1
