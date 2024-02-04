@@ -1,5 +1,8 @@
 import Mathlib.Analysis.Distribution.SchwartzSpace
+import Mathlib.Analysis.InnerProductSpace.Calculus
+import Mathlib.Analysis.SpecialFunctions.Sqrt
 
+import ForML.ContinuousMultilinearMap
 import ForML.Util
 
 -- https://github.com/leanprover/lean4/issues/2220
@@ -485,8 +488,8 @@ end Mul
 section Prod
 
 variable {ι : Type*} [DecidableEq ι]
-variable {E : Type*}
-variable [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F]
 
 lemma HasTemperateGrowth.prod (s : Finset ι) {f : ι → E → ℝ}
     (hf : ∀ i ∈ s, HasTemperateGrowth (f i)) :
@@ -496,6 +499,17 @@ lemma HasTemperateGrowth.prod (s : Finset ι) {f : ι → E → ℝ}
   | @insert i s hi IH =>
     simp only [Finset.mem_insert, forall_eq_or_imp] at hf
     simpa [Finset.prod_insert hi] using HasTemperateGrowth.mul hf.1 (IH hf.2)
+
+lemma hasTemperateGrowth_continuousMultilinearMap_mkPiField [Fintype ι] :
+    HasTemperateGrowth (fun x ↦ ContinuousMultilinearMap.mkPiField ℝ ι (G := F) x) := by
+  simp only [← ContinuousMultilinearMap.mkPiFieldL_apply]
+  exact hasTemperateGrowth_clm _
+
+lemma hasTemperateGrowth_continuousMultilinearMap_mkPiField_apply [Fintype ι] (x : F) :
+    HasTemperateGrowth (fun m ↦ (ContinuousMultilinearMap.mkPiField ℝ ι x) m) := by
+  simp only [ContinuousMultilinearMap.mkPiField_apply]
+  refine .smul_const ?_ x
+  exact .prod Finset.univ fun i _ ↦ hasTemperateGrowth_clm (.proj (φ := fun _ ↦ ℝ) i)
 
 end Prod
 

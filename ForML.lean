@@ -1,6 +1,7 @@
 import ForML.Bump
 import ForML.BumpTopology
 import ForML.ContinuousLinearMapCo
+import ForML.ContinuousMultilinearMap
 import ForML.Dirac
 import ForML.FDerivProd
 import ForML.HasTemperateGrowth

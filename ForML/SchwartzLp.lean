@@ -226,7 +226,7 @@ lemma snorm_nnreal_one_add_norm_rpow_smul_lt_top (n : ℝ) (f : 𝓢(E, F)) {p :
   rw [Real.rpow_neg]
   simp
 
-lemma integrable_one_add_norm_rpow_smul {n : ℝ} {f : 𝓢(E, F)} : Integrable fun x => (1 + ‖x‖) ^ n • f x := by
+lemma integrable_one_add_norm_rpow_smul (n : ℝ) (f : 𝓢(E, F)) : Integrable fun x => (1 + ‖x‖) ^ n • f x := by
   refine And.intro ?_ ?_
   . refine AEStronglyMeasurable.smul ?_ f.continuous.aestronglyMeasurable
     refine (AEMeasurable.pow_const ?_ n).aestronglyMeasurable
@@ -235,7 +235,7 @@ lemma integrable_one_add_norm_rpow_smul {n : ℝ} {f : 𝓢(E, F)} : Integrable 
     rw [← snorm_one_eq_lintegral_nnnorm]
     exact snorm_nnreal_one_add_norm_rpow_smul_lt_top n f zero_lt_one
 
-lemma integrable_norm_pow_smul {n : ℕ} {f : 𝓢(E, F)} : Integrable fun x => ‖x‖ ^ n • f x := by
+lemma integrable_norm_pow_smul (n : ℕ) (f : 𝓢(E, F)) : Integrable fun x => ‖x‖ ^ n • f x := by
   refine And.intro ?_ ?_
   . refine AEStronglyMeasurable.smul ?_ f.continuous.aestronglyMeasurable
     refine (AEMeasurable.pow_const ?_ n).aestronglyMeasurable
@@ -250,7 +250,7 @@ lemma integrable_norm_pow_smul {n : ℕ} {f : 𝓢(E, F)} : Integrable fun x => 
     rw [abs_of_nonneg (by simp)]
     refine pow_le_pow_left ?_ ?_ _ <;> simp
 
-lemma integrable_norm_pow_mul_norm {n : ℕ} {f : 𝓢(E, F)} : Integrable fun x => ‖x‖ ^ n * ‖f x‖ := by
+lemma integrable_norm_pow_mul_norm (n : ℕ) (f : 𝓢(E, F)) : Integrable fun x => ‖x‖ ^ n * ‖f x‖ := by
   refine And.intro ?_ ?_
   . refine AEStronglyMeasurable.mul ?_ f.continuous.norm.aestronglyMeasurable
     refine (AEMeasurable.pow_const ?_ n).aestronglyMeasurable

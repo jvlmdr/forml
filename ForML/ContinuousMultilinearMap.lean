@@ -24,8 +24,6 @@ end Basic
 
 section ContinuousLinear
 
-namespace ContinuousMultilinearMap
-
 variable {ι : Type*} [Fintype ι]
 variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
 variable {E : ι → Type*} [∀ i, SeminormedAddCommGroup (E i)] [∀ i, NormedSpace 𝕜 (E i)]
@@ -40,7 +38,7 @@ variable (𝕜 E G)
 The application of a multilinear map as a `ContinuousLinearMap`.
 (Not a bilinear map like `ContinuousLinearMap.apply` due to multilinearity with respect to `x`.)
 -/
-def apply (x : ∀ i, E i) : ContinuousMultilinearMap 𝕜 E G →L[𝕜] G where
+def ContinuousMultilinearMap.apply (x : ∀ i, E i) : ContinuousMultilinearMap 𝕜 E G →L[𝕜] G where
   toFun c := c x
   map_add' _ _ := rfl
   map_smul' _ _ := rfl
@@ -49,7 +47,7 @@ def apply (x : ∀ i, E i) : ContinuousMultilinearMap 𝕜 E G →L[𝕜] G wher
 variable {𝕜 E G}
 
 @[simp]
-lemma apply_apply {x : ∀ i, E i} {c : ContinuousMultilinearMap 𝕜 E G} :
+lemma ContinuousMultilinearMap.apply_apply {x : ∀ i, E i} {c : ContinuousMultilinearMap 𝕜 E G} :
     (apply 𝕜 E G x) c = c x := rfl
 
 end Apply
@@ -58,7 +56,7 @@ section MkPiField
 
 variable (𝕜 G)
 
-noncomputable def mkPiFieldL :
+noncomputable def ContinuousMultilinearMap.mkPiFieldL :
     G →L[𝕜] ContinuousMultilinearMap 𝕜 (fun _ : ι ↦ 𝕜) G where
   toFun := ContinuousMultilinearMap.mkPiField 𝕜 ι
   map_add' f g := by ext; simp
@@ -80,12 +78,17 @@ noncomputable def mkPiFieldL :
 variable {𝕜 G}
 
 @[simp]
-theorem mkPiFieldL_apply {z : G} :
+theorem ContinuousMultilinearMap.mkPiFieldL_apply {z : G} :
     mkPiFieldL 𝕜 G z = ContinuousMultilinearMap.mkPiField 𝕜 ι z := rfl
 
-end MkPiField
+theorem ContinuousMultilinearMap.mkPiField_continuous : Continuous fun z : G ↦ ContinuousMultilinearMap.mkPiField 𝕜 ι z :=
+  (mkPiFieldL 𝕜 G).continuous
 
-end ContinuousMultilinearMap
+-- theorem Continuous.continuousMultilinearMap_mkPiField {α : Type*} [TopologicalSpace α] {f : α → G} (hf : Continuous f) :
+--     Continuous (fun x ↦ ContinuousMultilinearMap.mkPiField 𝕜 ι (f x)) :=
+--   .comp ContinuousMultilinearMap.mkPiField_continuous hf
+
+end MkPiField
 
 end ContinuousLinear
 
@@ -255,7 +258,7 @@ theorem norm_domDomCongrLinearEquiv' (σ : ι ≃ ι') (f : ContinuousMultilinea
   rw [← Finset.univ_map_equiv_to_embedding σ, Finset.prod_map]
   -- simp [σ.symm_apply_apply]  -- TODO: Why doesn't this work?
   simp only [Equiv.coe_toEmbedding]
-  rw [Finset.prod_congr rfl (fun (i : ι) _ ↦ congrArg (‖x ·‖) (σ.symm_apply_apply i))]
+  rw [Finset.prod_congr rfl fun (i : ι) _ ↦ congrArg (‖x ·‖) (σ.symm_apply_apply i)]
 
 variable (𝕜 D F)
 
@@ -525,5 +528,12 @@ theorem ContinuousMultilinearMap.continuous_compContinuousLinearMapL :
   rw [continuous_congr (compContinuousLinearMapL_domDomCongr G e)]
   refine .clm_comp continuous_const (.clm_comp ?_ continuous_const)
   exact .comp (continuous_compContinuousLinearMapL_fin G) (LinearIsometryEquiv.continuous _)
+
+-- theorem Continuous.continuousMultilinearMap_compContinuousLinearMapL
+--     {α : Type*} [TopologicalSpace α]
+--     {f : α → (i : ι) → E i →L[𝕜] E₁ i}
+--     (hf : Continuous f) :
+--     Continuous (fun x ↦ ContinuousMultilinearMap.compContinuousLinearMapL (G := G) (f x)) :=
+--   .comp (ContinuousMultilinearMap.continuous_compContinuousLinearMapL G) hf
 
 end Fintype
