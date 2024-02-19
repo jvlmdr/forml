@@ -199,6 +199,16 @@ lemma SchwartzMap.innerSL_smul_one_eq_id_smul {φ : 𝓢(ℝ, F)} {x : ℝ} :
     SchwartzMap.innerSL_smul φ x 1 = SchwartzMap.id_smul φ x := by
   simp [innerSL_smul_apply, id_smul_apply]
 
+lemma SchwartzMap.norm_innerSL_smul_le {φ : 𝓢(E, F)} {x : E} :
+    ‖SchwartzMap.innerSL_smul φ x‖ ≤ ‖x‖ * ‖φ x‖ := by
+  rw [ContinuousLinearMap.opNorm_le_iff (mul_nonneg (norm_nonneg x) (norm_nonneg (φ x)))]
+  intro m
+  rw [SchwartzMap.innerSL_smul_apply, norm_smul]
+  rw [← mul_rotate]
+  refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg (φ x))
+  rw [mul_comm]
+  exact norm_inner_le_norm x m
+
 end InnerProduct
 
 end Pointwise

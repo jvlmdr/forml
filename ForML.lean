@@ -1,5 +1,6 @@
 import ForML.Bump
 import ForML.BumpTopology
+import ForML.ContinuousLinearMap
 import ForML.ContinuousLinearMapCo
 import ForML.ContinuousMultilinearMap
 import ForML.Dirac
@@ -14,8 +15,8 @@ import ForML.LpHoelder
 import ForML.MultilinearDeriv
 import ForML.MultilinearIntegral
 import ForML.PiEquiv
-import ForML.SchwartzDeriv
 import ForML.SchwartzEquiv
 import ForML.SchwartzLp
+import ForML.SchwartzRealFourier
 import ForML.Trigonometric
 import ForML.Util

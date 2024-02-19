@@ -4,7 +4,7 @@ import Mathlib.Analysis.Distribution.SchwartzSpace
 import Mathlib.Analysis.InnerProductSpace.PiL2  -- For example.
 
 import ForML.HasTemperateGrowth
-import ForML.MultilinearDeriv
+-- import ForML.MultilinearDeriv
 import ForML.PiEquiv
 
 -- https://github.com/leanprover/lean4/issues/2220
@@ -24,7 +24,7 @@ lemma ContinuousLinearEquiv.norm_le_norm_symm_mul_norm_apply (e : E ≃L[𝕜] D
     ‖x‖ ≤ ‖e.symm.toContinuousLinearMap‖ * ‖e x‖ := by
   suffices : ‖e.symm.toContinuousLinearMap (e x)‖ ≤ ‖e.symm.toContinuousLinearMap‖ * ‖e x‖
   . simpa
-  refine le_trans (ContinuousLinearMap.le_op_norm _ _) ?_
+  refine le_trans (ContinuousLinearMap.le_opNorm _ _) ?_
   refine mul_le_mul_of_nonneg_left ?_ (norm_nonneg _)
   simp [le_add_iff_nonneg_left]
 
@@ -37,7 +37,7 @@ lemma ContinuousLinearEquiv.norm_le_norm_symm_mul_norm_apply (e : E ≃L[𝕜] D
 --       intro x
 --       simp
 --       rw [← ContinuousLinearEquiv.apply_symm_apply e.symm x]
---       refine le_trans (e.symm.toContinuousLinearMap.le_op_norm _) ?_
+--       refine le_trans (e.symm.toContinuousLinearMap.le_opNorm _) ?_
 --       simp
 --       exact mul_le_mul_of_nonneg_left (by simp) (norm_nonneg _))
 

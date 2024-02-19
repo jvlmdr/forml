@@ -15,7 +15,7 @@ import ForML.IndexIntegral
 import ForML.IntegralAgainst
 import ForML.ContinuousMultilinearMap
 import ForML.MultilinearIntegral
-import ForML.SchwartzDeriv
+-- import ForML.SchwartzDeriv  -- TODO: Remove
 import ForML.SchwartzEquiv
 import ForML.SchwartzLp
 import ForML.Trigonometric
@@ -39,19 +39,19 @@ variable [NontriviallyNormedField 𝕜] [NormedAddCommGroup E] [NormedSpace 𝕜
 
 variable [Fintype ι] {z : G} {x : 𝕜}
 
-#check ContinuousMultilinearMap.mkPiField 𝕜 ι z
+#check ContinuousMultilinearMap.mkPiRing 𝕜 ι z
 
-#check ContinuousMultilinearMap.mkPiField 𝕜 ι z (fun _ ↦ x)
+#check ContinuousMultilinearMap.mkPiRing 𝕜 ι z (fun _ ↦ x)
 
--- theorem hasFTaylorSeriesUpTo_mkPiField {n : ℕ} {z : G} {x : E} :
---     HasFTaylorSeriesUpTo n (fun y ↦ ContinuousMultilinearMap.mkPiField 𝕜 (Fin n) z y)
---       (fun x n ↦ ContinuousMultilinearMap.mkPiField 𝕜 (Fin n) z) := by
+-- theorem hasFTaylorSeriesUpTo_mkPiRing {n : ℕ} {z : G} {x : E} :
+--     HasFTaylorSeriesUpTo n (fun y ↦ ContinuousMultilinearMap.mkPiRing 𝕜 (Fin n) z y)
+--       (fun x n ↦ ContinuousMultilinearMap.mkPiRing 𝕜 (Fin n) z) := by
 --   sorry
 
--- theorem norm_iteratedFDeriv_mkPiField_le [Fintype ι] {f : E → G} {x : E} :
---     ‖iteratedFDeriv 𝕜 n (fun x ↦ ContinuousMultilinearMap.mkPiField 𝕜 ι (f x)) x‖ ≤
+-- theorem norm_iteratedFDeriv_mkPiRing_le [Fintype ι] {f : E → G} {x : E} :
+--     ‖iteratedFDeriv 𝕜 n (fun x ↦ ContinuousMultilinearMap.mkPiRing 𝕜 ι (f x)) x‖ ≤
 --       C := by
---   rw [ContinuousMultilinearMap.op_norm_le_iff _ sorry]
+--   rw [ContinuousMultilinearMap.opNorm_le_iff _ sorry]
 --   intro m
 --   induction n generalizing f with
 --   | zero =>
@@ -68,9 +68,9 @@ variable [Fintype ι] {z : G} {x : 𝕜}
 --     rw [mul_comm ‖m 0‖]
 --     rw [← mul_assoc]
 --     suffices :
---         ‖fderiv 𝕜 (fun y ↦ iteratedFDeriv 𝕜 n (fun x ↦ ContinuousMultilinearMap.mkPiField 𝕜 ι (f x)) y (Fin.tail m)) x‖ ≤
+--         ‖fderiv 𝕜 (fun y ↦ iteratedFDeriv 𝕜 n (fun x ↦ ContinuousMultilinearMap.mkPiRing 𝕜 ι (f x)) y (Fin.tail m)) x‖ ≤
 --           C * ∏ i : Fin n, ‖m (Fin.succ i)‖
---     · rw [ContinuousLinearMap.op_norm_le_iff] at this
+--     · rw [ContinuousLinearMap.opNorm_le_iff] at this
 --       · exact this (m 0)
 --       · refine mul_nonneg ?_ ?_
 --         · sorry
@@ -643,18 +643,18 @@ lemma continuous_integral_vectorFourierIntegrand {f : 𝓢(E, F)} :
   -- Could use `integralCLM.continuous.comp`; show that `hasTemperateGrowth_smul` is continuous with Schwartz topology?
   differentiable_integral_vectorFourierIntegrand.continuous
 
--- theorem ContinuousMultilinearMap.smul_mkPiField [Fintype ι] (c : 𝕜) (z : F) (m : ι → 𝕜) :
---     ContinuousMultilinearMap.mkPiField 𝕜 ι z m =
---       ContinuousMultilinearMap.mkPiField 𝕜 ι (1 : 𝕜) m • z := by
+-- theorem ContinuousMultilinearMap.smul_mkPiRing [Fintype ι] (c : 𝕜) (z : F) (m : ι → 𝕜) :
+--     ContinuousMultilinearMap.mkPiRing 𝕜 ι z m =
+--       ContinuousMultilinearMap.mkPiRing 𝕜 ι (1 : 𝕜) m • z := by
 --   sorry
 
 -- Anything to gain from `FormalMultilinearSeries.compContinuousLinearMap`?
 -- variable {f : 𝓢(E, F)} {ξ : E}
 
 
--- noncomputable def SchwartzMap.mkPiField (ι : Type*) [Fintype ι] (f : 𝓢(E, F)) :
+-- noncomputable def SchwartzMap.mkPiRing (ι : Type*) [Fintype ι] (f : 𝓢(E, F)) :
 --     𝓢(E, ContinuousMultilinearMap ℝ (fun _ : ι ↦ ℝ) F) where
---   toFun x := ContinuousMultilinearMap.mkPiField ℝ ι (f x)
+--   toFun x := ContinuousMultilinearMap.mkPiRing ℝ ι (f x)
 --   smooth' := by
 --     sorry
 --   decay' := by
@@ -673,14 +673,14 @@ lemma continuous_integral_vectorFourierIntegrand {f : 𝓢(E, F)} :
 --       rw [iteratedFDeriv_succ_eq_comp_left]
 --       sorry
 
--- theorem mkPiField_vectorFourierIntegrand {n : ℕ} {f : 𝓢(E, F)} {x ξ : E} :
---     ContinuousMultilinearMap.mkPiField ℝ (Fin n) (vectorFourierIntegrand ξ f x) =
+-- theorem mkPiRing_vectorFourierIntegrand {n : ℕ} {f : 𝓢(E, F)} {x ξ : E} :
+--     ContinuousMultilinearMap.mkPiRing ℝ (Fin n) (vectorFourierIntegrand ξ f x) =
 --       (vectorFourierIntegrand ξ f x)
 
 
 theorem hasFTaylorSeriesUpTo_integral_vectorFourierIntegrand {f : 𝓢(E, F)} :
     HasFTaylorSeriesUpTo ⊤ (fun ξ ↦ ∫ x, vectorFourierIntegrand ξ f x) fun ξ n ↦
-      (-(2 * π * I)) ^ n • ∫ x, (ContinuousMultilinearMap.mkPiField ℝ (Fin n)
+      (-(2 * π * I)) ^ n • ∫ x, (ContinuousMultilinearMap.mkPiRing ℝ (Fin n)
         (vectorFourierIntegrand ξ f x)).compContinuousLinearMap fun _ ↦ innerSL ℝ x := by
   rw [hasFTaylorSeriesUpTo_top_iff]
   intro n
@@ -966,7 +966,7 @@ theorem iteratedFDeriv_vectorFourierIntegrand_apply {n : ℕ} {f : 𝓢(E, F)} {
   | zero => simp
   | succ n IH =>
     rw [iteratedFDeriv_succ_apply_left]
-    rw [← fderiv_continuousMultilinearMap_apply_comm
+    rw [← fderiv_continuousMultilinear_apply_const_apply
       (contDiff_vectorFourierIntegrand.differentiable_iteratedFDeriv (WithTop.coe_lt_top _) _)]
     simp_rw [IH]
     -- Bring the power outside.
@@ -993,7 +993,7 @@ theorem iteratedFDeriv_vectorFourierIntegrand_apply {n : ℕ} {f : 𝓢(E, F)} {
 -- for `contDiff_integralCLM_vectorFourierIntegrand`.
 theorem iteratedFDeriv_vectorFourierIntegrand {n : ℕ} {f : 𝓢(E, F)} {x ξ : E} :
     iteratedFDeriv ℝ n (fun ξ ↦ vectorFourierIntegrand ξ f x) ξ =
-    (-(2 * π * I)) ^ n • (ContinuousMultilinearMap.mkPiField ℝ (Fin n)
+    (-(2 * π * I)) ^ n • (ContinuousMultilinearMap.mkPiRing ℝ (Fin n)
       (vectorFourierIntegrand ξ f x)).compContinuousLinearMap (fun _ ↦ innerSL ℝ x) := by
   ext; simp [iteratedFDeriv_vectorFourierIntegrand_apply]
 
@@ -1018,8 +1018,8 @@ theorem integral_iteratedFDeriv_vectorFourierIntegrand_apply' {n : ℕ} {f : �
       refine .clm_apply ?_ ?_
       · refine .comp (ContinuousMultilinearMap.continuous_compContinuousLinearMapL F) ?_
         exact continuous_pi (fun i ↦ ContinuousLinearMap.continuous (innerSL ℝ))
-      · simp only [← ContinuousMultilinearMap.mkPiFieldL_apply]
-        -- TODO: Add lemma `Continuous.mkPiField`?
+      · simp only [← ContinuousMultilinearMap.mkPiRingL_apply]
+        -- TODO: Add lemma `Continuous.mkPiRing`?
         exact .clm_apply continuous_const (vectorFourierIntegrand ξ f).continuous
     · refine .mono (integrable_norm_pow_mul_norm n f).hasFiniteIntegral ?_
       refine Filter.eventually_of_forall ?_
@@ -1045,7 +1045,7 @@ theorem norm_iteratedFDeriv_vectorFourierIntegrand_apply_le {n : ℕ} {f : 𝓢(
 theorem norm_iteratedFDeriv_vectorFourierIntegrand_le {n : ℕ} {f : 𝓢(E, F)} {x ξ : E} :
     ‖iteratedFDeriv ℝ n (fun ξ ↦ vectorFourierIntegrand ξ f x) ξ‖ ≤
       (2 * π) ^ n * ‖x‖ ^ n * ‖vectorFourierIntegrand ξ f x‖ :=
-  ContinuousMultilinearMap.op_norm_le_bound _
+  ContinuousMultilinearMap.opNorm_le_bound _
     (by refine mul_nonneg (mul_nonneg ?_ ?_) ?_ <;> simp [Real.pi_pos.le])
     fun _ ↦ norm_iteratedFDeriv_vectorFourierIntegrand_apply_le
 
@@ -1095,6 +1095,8 @@ theorem vectorFourierIntegrand_hasTemperateGrowth_smul {f : 𝓢(E, F)} {x ξ : 
   rw [smul_comm]
 
 -- TODO: Depends on `contDiff_integral_vectorFourierIntegrand`.
+-- TODO: Represent as `ContinuousMultilinearMap`-valued `SchwartzMap`.
+/-- The n-th derivative of the Fourier transform is the Fourier transform of multiplication. -/
 theorem iteratedFDeriv_integral_vectorFourierIntegrand_apply {n : ℕ} {f : 𝓢(E, F)} {ξ : E}
     {m : Fin n → E} :
     iteratedFDeriv ℝ n (fun ξ ↦ ∫ x, vectorFourierIntegrand ξ f x) ξ m =
@@ -1104,8 +1106,9 @@ theorem iteratedFDeriv_integral_vectorFourierIntegrand_apply {n : ℕ} {f : 𝓢
   | zero => simp
   | succ n IH =>
     rw [iteratedFDeriv_succ_apply_left]
-    rw [← fderiv_continuousMultilinearMap_apply_comm (ContDiff.differentiable_iteratedFDeriv
-      (WithTop.coe_lt_top n) contDiff_integral_vectorFourierIntegrand ξ)]
+    rw [← fderiv_continuousMultilinear_apply_const_apply
+      (ContDiff.differentiable_iteratedFDeriv (WithTop.coe_lt_top n)
+        contDiff_integral_vectorFourierIntegrand ξ)]
     simp_rw [IH]
     simp only [Fin.tail]
     -- TODO: Avoid long notation that results here?
@@ -1125,6 +1128,15 @@ theorem iteratedFDeriv_integral_vectorFourierIntegrand_apply {n : ℕ} {f : 𝓢
       hasTemperateGrowth_smul_apply]
     simp [smul_comm (_ : ℂ), smul_smul]
 
+
+example {n : ℕ} {f : 𝓢(E, F)} {ξ : E}
+    {m : Fin n → E} :
+    iteratedFDeriv ℝ n (fun ξ ↦ ∫ x, vectorFourierIntegrand ξ f x) ξ m = sorry := by
+  rw [iteratedFDeriv_integral_vectorFourierIntegrand_apply]
+  -- have := mkPiRing
+  sorry
+
+
 -- -- Similar to `innerSL_smul`, define a Schwartz map with `ContinuousMultilinearMap` value.
 -- noncomputable def innerSL_smul
 --     (F : Type*) [NormedAddCommGroup F] [NormedSpace ℝ F]
@@ -1142,8 +1154,9 @@ theorem iteratedFDeriv_integral_vectorFourierIntegrand_apply' {n : ℕ} {f : �
   | zero => simp [vectorFourierIntegrand_hasTemperateGrowth_smul]
   | succ n IH =>
     rw [iteratedFDeriv_succ_apply_left]
-    rw [← fderiv_continuousMultilinearMap_apply_comm (ContDiff.differentiable_iteratedFDeriv
-      (WithTop.coe_lt_top n) contDiff_integral_vectorFourierIntegrand ξ)]
+    rw [← fderiv_continuousMultilinear_apply_const_apply
+      (ContDiff.differentiable_iteratedFDeriv (WithTop.coe_lt_top n)
+        contDiff_integral_vectorFourierIntegrand ξ)]
     simp_rw [IH]
     simp only [Fin.tail]
     rw [fderiv_const_smul (differentiable_integral_vectorFourierIntegrand _)]
@@ -1178,7 +1191,7 @@ theorem iteratedFDeriv_integral_vectorFourierIntegrand_apply' {n : ℕ} {f : �
 --     sorry
 
 -- TODO: In order to write `iteratedFDeriv_integral_vectorFourierIntegrand`,
--- we need `mkPiField` Schwartz map (to take `m` outside).
+-- we need `mkPiRing` Schwartz map (to take `m` outside).
 -- If we then take the norm, we will have something like `‖vectorFourierIntegrand ξ (prod_inner_smul f)‖`.
 -- What can we do with that?
 
@@ -1198,23 +1211,28 @@ theorem norm_iteratedFDeriv_integral_vectorFourierIntegrand_le {n : ℕ} {f : �
     ‖iteratedFDeriv ℝ n (fun ξ ↦ ∫ x, vectorFourierIntegrand ξ f x) ξ‖ ≤
       -- (2 * π) ^ n * ‖vectorFourierIntegrand ξ (SchwartzMap.hasTemperateGrowth_mul  f)‖ := by
       (2 * π) ^ n * C := by
-  rw [ContinuousMultilinearMap.op_norm_le_iff _ (mul_nonneg (by simp [Real.pi_pos.le]) hC)]
+  rw [ContinuousMultilinearMap.opNorm_le_iff _ (mul_nonneg (by simp [Real.pi_pos.le]) hC)]
   intro m
-  rw [iteratedFDeriv_integral_vectorFourierIntegrand_apply']
+  -- rw [iteratedFDeriv_integral_vectorFourierIntegrand_apply']
+  rw [iteratedFDeriv_integral_vectorFourierIntegrand_apply]
   rw [norm_smul, mul_assoc _ C]
   refine mul_le_mul (by simp [_root_.abs_of_nonneg Real.pi_pos.le]) ?_
     (norm_nonneg _) (by simp [Real.pi_pos.le])
-  refine le_trans norm_integral_vectorFourierIntegrand_le ?_
-  simp [hasTemperateGrowth_smul_apply]
-  -- Need `C` such that `∫ (x : E), ‖(∏ i : Fin n, ⟪x, m i⟫_ℝ) • f x‖ ≤ C * ∏ i : Fin n, ‖m i‖`.
-  refine le_trans (integral_mono (g := fun x ↦ (∏ i : Fin n, ‖x‖ * ‖m i‖) • ‖f x‖) ?_ ?_ ?_) ?_
-  · sorry
-  · sorry
-  · sorry
-  -- Need `C` such that `∫ (a : E), (∏ i : Fin n, ‖a‖ * ‖m i‖) • ‖f a‖ ≤ C * ∏ i : Fin n, ‖m i‖`.
-  -- Expect this to contain `‖ξ‖ ^ n`??
-  -- Effectively need Plancherel's theorem?
+  refine le_trans (norm_integral_le_integral_norm _) ?_
+  simp only [norm_smul]
   sorry
+
+  -- refine le_trans norm_integral_vectorFourierIntegrand_le ?_
+  -- simp [hasTemperateGrowth_smul_apply]
+  -- -- Need `C` such that `∫ (x : E), ‖(∏ i : Fin n, ⟪x, m i⟫_ℝ) • f x‖ ≤ C * ∏ i : Fin n, ‖m i‖`.
+  -- refine le_trans (integral_mono (g := fun x ↦ (∏ i : Fin n, ‖x‖ * ‖m i‖) • ‖f x‖) ?_ ?_ ?_) ?_
+  -- · sorry
+  -- · sorry
+  -- · sorry
+  -- -- Need `C` such that `∫ (a : E), (∏ i : Fin n, ‖a‖ * ‖m i‖) • ‖f a‖ ≤ C * ∏ i : Fin n, ‖m i‖`.
+  -- -- Expect this to contain `‖ξ‖ ^ n`??
+  -- -- Effectively need Plancherel's theorem?
+  -- sorry
 
 -- theorem fderiv_integral_vectorFourierIntegrand_apply_eq_integral_vectorFourierIntegrand_inner_smul_apply
 --     {n : ℕ} {f : 𝓢(E, F)} {x ξ m : E} :
@@ -1250,7 +1268,7 @@ theorem norm_iteratedFDeriv_integral_vectorFourierIntegrand_le {n : ℕ} {f : �
 
 -- noncomputable def iteratedFDerivVectorFourierIntegrandCLM (n : ℕ) (x : E) : 𝓢(E, F) →L[ℝ] 𝓢(E, E[×n]→L[ℝ] F) :=
 --   mkCLM (fun f ξ => (-2 * π * I) ^ n •
---       (ContinuousMultilinearMap.mkPiField ℝ (Fin n) (vectorFourierIntegrand ξ f x)).compContinuousLinearMap
+--       (ContinuousMultilinearMap.mkPiRing ℝ (Fin n) (vectorFourierIntegrand ξ f x)).compContinuousLinearMap
 --         (fun _ => innerSL ℝ x))
 --     (fun f g x => iteratedFDeriv_add_apply (f.smooth n) (g.smooth n))
 --     (fun r f x => iteratedFDeriv_const_smul_apply (f.smooth n))
@@ -1322,19 +1340,33 @@ noncomputable def integral_vectorFourierIntegrandCLM {r : ℕ} [hr : Fact (Finit
       simp only [← vectorFourierIntegrand_apply]
       -- have C' : ℝ := sorry
       -- have hC' : 0 ≤ C := sorry
-      -- have {f : 𝓢(E, F)} {x : E} := (iteratedFDeriv ℝ m.2 (fun ξ => ∫ (x : E), vectorFourierIntegrand ξ f x) x).op_norm_le_iff hC'
+      -- have {f : 𝓢(E, F)} {x : E} := (iteratedFDeriv ℝ m.2 (fun ξ => ∫ (x : E), vectorFourierIntegrand ξ f x) x).opNorm_le_iff hC'
 
       have k' : ℕ := sorry
       have n' : ℕ := sorry
       have C' : ℝ := sorry
+      have hC' : 0 ≤ C' := sorry
       use Finset.Iic (k', n')
       use C'
-      refine ⟨sorry, ?_⟩
+      refine And.intro hC' ?_
       intro φ ξ
       -- CURRENT GOAL 1
       -- `‖ξ‖ ^ p * ‖iteratedFDeriv ℝ i (fun ξ ↦ ∫ x, vectorFourierIntegrand ξ φ x) ξ‖ ≤ _`
+      -- This should be bounded as it is the Fourier transform of
+      -- `1 / (2 * π * I) ^ k * iteratedFDeriv ℝ k (fun x ↦ -(2 * π * I) ^ l • φ x)`
+      -- and all derivatives of `φ` go to zero sufficiently fast.
+
+      have : ‖ξ‖ ^ p * ‖iteratedFDeriv ℝ i (fun ξ => ∫ (x : E), ((vectorFourierIntegrand ξ) φ) x) ξ‖ =
+          ‖1‖ := by
+        sorry
+
+      have C : ℝ := sorry
+      have : ‖ξ‖ ^ p * ‖iteratedFDeriv ℝ i (fun ξ ↦ ∫ x, vectorFourierIntegrand ξ φ x) ξ‖ ≤ C
+      ·
+        sorry
+      rw [iteratedFDeriv_integral_vectorFourierIntegrand_apply]
       -- Reduce to norm of application of `iteratedFDeriv`?
-      have := (ContinuousMultilinearMap.op_norm_le_iff
+      have := (ContinuousMultilinearMap.opNorm_le_iff
           (iteratedFDeriv ℝ i (fun ξ => ∫ (x : E), ((vectorFourierIntegrand ξ) φ) x) ξ)
           (sorry : 0 ≤ C' * (Finset.Iic (k', n')).sup (schwartzSeminormFamily ℝ E F) φ)
         ).mpr

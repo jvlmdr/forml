@@ -1,6 +1,7 @@
 import Mathlib.Analysis.Calculus.Deriv.Pi
 import Mathlib.Analysis.Calculus.FDeriv.Pi
 
+import ForML.ContinuousLinearMap
 import ForML.PiEquiv
 
 open scoped BigOperators
@@ -60,24 +61,24 @@ lemma Pi.norm_single_eq {i : ι} {u : M i} : ‖Pi.single i u‖ = ‖u‖ := by
 
 namespace ContinuousLinearMap
 
-/--
-`ContinuousLinearMap` that constructs a one-hot vector; counterpart to `proj`.
-Leave `R` implicit to match `ContinuousLinearMap.proj` and `LinearMap.single`.
--/
-def single (i : ι) : M i →L[R] (∀ i, M i) where
-  toLinearMap := LinearMap.single i
-  cont := continuous_single i
+-- /--
+-- `ContinuousLinearMap` that constructs a one-hot vector; counterpart to `proj`.
+-- Leave `R` implicit to match `ContinuousLinearMap.proj` and `LinearMap.single`.
+-- -/
+-- def single (i : ι) : M i →L[R] (∀ i, M i) where
+--   toLinearMap := LinearMap.single i
+--   cont := continuous_single i
 
-@[simp] lemma single_apply {i : ι} {x : M i} : single (R := R) i x = Pi.single i x := rfl
+-- @[simp] lemma single_apply {i : ι} {x : M i} : single (R := R) i x = Pi.single i x := rfl
 
-@[simp] lemma proj_single_apply {i : ι} {x : M i} : proj (R := R) i (single (R := R) i x) = x := by simp
+-- @[simp] lemma proj_single_apply {i : ι} {x : M i} : proj (R := R) i (single (R := R) i x) = x := by simp
 
-@[simp] lemma proj_comp_single {i : ι} : (proj i).comp (single i) = id R (M i) := by
-  ext x
-  simp
+-- @[simp] lemma proj_comp_single {i : ι} : (proj i).comp (single i) = id R (M i) := by
+--   ext x
+--   simp
 
-lemma norm_single_le_one {i : ι} : ‖single (R := R) (M := M) i‖ ≤ 1 := by
-  rw [op_norm_le_iff zero_le_one]
+lemma norm_single_le_one {i : ι} : ‖single (R := R) (φ := M) i‖ ≤ 1 := by
+  rw [opNorm_le_iff zero_le_one]
   simp
 
 
@@ -173,9 +174,7 @@ lemma copi_eq_sum_comp_proj {f : ∀ i, M i →L[R] F} :
 lemma copi_eq_sum_compL_proj {f : ∀ i, M i →L[R] F} :
     copi f = ∑ i, ContinuousLinearMap.compL _ _ _ _ (f i) (proj i) := by
   ext x
-  simp
-  rw [ContinuousLinearMap.sum_apply]
-  conv => rhs; arg 2; intro i; rw [comp_apply]
+  simp [copi_apply]
 
 
 lemma invcopi_apply {f : (∀ i, M i) →L[R] F} {i : ι} {xi : M i} :
@@ -296,7 +295,7 @@ lemma lsum_symm_apply_eq_invcopiL {f : (∀ i, M i) →L[R] F} :
 --   norm_map' := fun f => by
 --     simp
 --     rw [lsum_apply_eq_copiL]
---     refine ContinuousLinearMap.op_norm_eq_of_bounds (norm_nonneg _) ?_ ?_
+--     refine ContinuousLinearMap.opNorm_eq_of_bounds (norm_nonneg _) ?_ ?_
 --     . intro x
 --       simp [Pi.norm_def]
 --       simp [copiL_apply, copi_apply]
@@ -374,11 +373,7 @@ noncomputable def invcoprodL : (M₁ × M₂ →L[R] F) →L[R] (M₁ →L[R] F)
 end Def
 
 lemma invcoprodL_apply {f : M₁ × M₂ →L[R] F} : invcoprodL R M₁ M₂ F f = invcoprod f := by
-  ext x <;> {
-    simp [invcoprodL]
-    rw [ContinuousLinearMap.comp_apply]
-    simp
-  }
+  ext x <;> simp [invcoprodL]
 
 
 section Def

@@ -3,6 +3,7 @@ import Mathlib.Analysis.Calculus.FDeriv.Pi
 import Mathlib.Analysis.Distribution.SchwartzSpace
 
 import ForML.ContinuousLinearMapCo
+import ForML.ContinuousMultilinearMap
 import ForML.MultilinearDeriv
 import ForML.PiEquiv
 
@@ -236,7 +237,7 @@ TODO: Could eliminate `DifferentiableAt` using `Or.elim`.
 -/
 lemma norm_fderiv_le_sum_norm_fpideriv {f : (∀ i, M i) → F} {x : ∀ i, M i} (hf : DifferentiableAt 𝕜 f x) :
     ‖fderiv 𝕜 f x‖ ≤ ∑ i, ‖fpideriv 𝕜 i f x‖ := by
-  rw [ContinuousLinearMap.op_norm_le_iff (Finset.sum_nonneg (fun i _ => norm_nonneg _))]
+  rw [ContinuousLinearMap.opNorm_le_iff (Finset.sum_nonneg (fun i _ => norm_nonneg _))]
   intro u
   rw [fderiv_apply_eq_sum_fpideriv hf]
   refine le_trans (norm_sum_le _ _) ?_
@@ -244,7 +245,7 @@ lemma norm_fderiv_le_sum_norm_fpideriv {f : (∀ i, M i) → F} {x : ∀ i, M i}
   refine Finset.sum_le_sum ?_
   simp
   intro i
-  refine le_trans (ContinuousLinearMap.le_op_norm _ _) ?_
+  refine le_trans (ContinuousLinearMap.le_opNorm _ _) ?_
   exact mul_le_mul_of_nonneg_left (norm_le_pi_norm u i) (norm_nonneg _)
 
 /-- The norm of the fderiv map is bounded by norms of the coordinate derivatives. -/
@@ -254,7 +255,7 @@ lemma norm_fderiv_le_sum_norm_pideriv {f : (ι → 𝕜) → F} {x : ι → 𝕜
   refine Finset.sum_le_sum ?_
   simp
   intro i
-  rw [ContinuousLinearMap.op_norm_le_iff (norm_nonneg _)]
+  rw [ContinuousLinearMap.opNorm_le_iff (norm_nonneg _)]
   intro m
   refine le_of_eq ?_
   rw [fpideriv_apply_eq_smul_pideriv]
@@ -265,13 +266,13 @@ lemma norm_fderiv_le_sum_norm_pideriv {f : (ι → 𝕜) → F} {x : ι → 𝕜
 lemma norm_fpideriv_le_norm_fderiv {i : ι} {f : (∀ i, M i) → F} {x : ∀ i, M i} (hf : DifferentiableAt 𝕜 f x) :
     ‖fpideriv 𝕜 i f x‖ ≤ ‖fderiv 𝕜 f x‖ := by
   simp_rw [fpideriv_eq_fderiv_comp_single hf]
-  refine le_trans (ContinuousLinearMap.op_norm_comp_le _ _) ?_
+  refine le_trans (ContinuousLinearMap.opNorm_comp_le _ _) ?_
   exact mul_le_of_le_one_right (norm_nonneg _) ContinuousLinearMap.norm_single_le_one
 
 lemma norm_pideriv_le_norm_fderiv {i : ι} {f : (ι → 𝕜) → F} {x : ι → 𝕜} (hf : DifferentiableAt 𝕜 f x) :
     ‖pideriv i f x‖ ≤ ‖fderiv 𝕜 f x‖ := by
   simp_rw [pideriv_eq_fderiv_apply_single hf]
-  refine le_trans (ContinuousLinearMap.le_op_norm _ _) ?_
+  refine le_trans (ContinuousLinearMap.le_opNorm _ _) ?_
   simp
 
 lemma norm_iteratedFDeriv_fpideriv_le_norm_iteratedFDeriv_succ {n : ℕ} {i : ι} {f : (ι → 𝕜) → F} {x : ι → 𝕜}
@@ -540,16 +541,16 @@ theorem HasFTaylorSeriesUpTo.hasFDerivAt_orderedIteratedFPiDeriv' {n : ℕ} (hf 
     rw [LinearIsometryEquiv.comp_hasFDerivAt_iff']
     refine HasFDerivAt.congr_fderiv (hf.hasFDerivAt (by simp) x) ?_
     ext m
-    simp
-    rw [ContinuousLinearMap.comp_apply]
-    rw [ContinuousLinearMap.comp_apply]
-    simp
-    rw [ContinuousMultilinearMap.compContinuousLinearMap_apply]
-    simp
+    simp only [continuousMultilinearCurryFin1_apply, Nat.zero_eq, LinearIsometryEquiv.symm_symm,
+      ContinuousLinearMap.coe_comp', ContinuousLinearEquiv.coe_coe, LinearIsometryEquiv.coe_coe,
+      Function.comp_apply, ContinuousMultilinearMap.compContinuousLinearMapL_apply,
+      continuousMultilinearIsEmptyEquiv_apply,
+      ContinuousMultilinearMap.compContinuousLinearMap_apply, Pi.zero_apply, map_zero,
+      ContinuousMultilinearMap.curryLeft_apply]
     congr
     funext i
     rw [Fin.eq_zero i]
-    simp
+    simp only [Fin.cons_zero]
     have : (0 : Fin 1) = Fin.last 0 := rfl
     simp [this]
   | succ n ih =>
@@ -620,11 +621,11 @@ theorem HasFTaylorSeriesUpTo.orderedIteratedFPiDeriv_apply {n : ℕ} {N : ℕ∞
     rw [fpideriv_apply_eq_fderiv_apply_single (differentiableAt_orderedIteratedFPiDeriv hn hf)]
     rw [HasFTaylorSeriesUpTo.fderiv_orderedIteratedFPiDeriv hn hf]
     rw [ContinuousLinearMap.comp_apply]
-    dsimp
-    rw [ContinuousMultilinearMap.compContinuousLinearMap_apply]
-    simp
+    simp only [ContinuousMultilinearMap.compContinuousLinearMapL_apply,
+      ContinuousMultilinearMap.compContinuousLinearMap_apply, ContinuousLinearMap.single_apply,
+      ContinuousMultilinearMap.curryLeft_apply]
     congr
-    simp [Fin.tail]
+    simp only [Fin.tail]
     funext i
     refine Fin.cases ?_ ?_ i <;> simp
 
@@ -725,7 +726,7 @@ theorem ContDiff.orderedIteratedPiDeriv_eq_orderedIteratedFPiDeriv {n : ℕ} (hf
     change _ = ((fpideriv 𝕜 (js 0) (orderedIteratedFPiDeriv 𝕜 (Fin.tail js) f) x) 1) 1
     rw [fpideriv_apply, fpideriv_apply]
     simp_rw [ih]
-    rw [fderiv_continuousMultilinearMap_apply_comm]
+    rw [fderiv_continuousMultilinear_apply_const_apply]
     change DifferentiableAt 𝕜 (orderedIteratedFPiDeriv 𝕜 (Fin.tail js) f ∘ Function.update x (js 0)) _
     refine DifferentiableAt.comp _ ?_ ?_
     . refine hf.differentiableAt_orderedIteratedFPiDeriv ?_
@@ -755,8 +756,7 @@ theorem ContDiff.orderedIteratedPiDeriv_right {m N : ℕ∞} {n : ℕ} (hn : m +
     ContDiff 𝕜 m (_root_.orderedIteratedPiDeriv js f) := by
   have hfn : ContDiff 𝕜 n f := hf.of_le (le_trans (by simp) hn)
   conv => arg 3; intro x; rw [ContDiff.orderedIteratedPiDeriv_eq_iteratedFDeriv_apply hfn]
-  exact continuousMultilinearMap_apply_const (hf.iteratedFDeriv_right hn)
-
+  exact continuousMultilinear_apply_const (hf.iteratedFDeriv_right hn)
 
 end FormalMultilinearSeriesField
 

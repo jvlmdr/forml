@@ -270,14 +270,4 @@ lemma HasDerivAt.cexp_real_smul_I {f : ℝ → ℝ} {f' : ℝ} {x : ℝ} (hf : H
   . simpa [← mul_assoc] using this
   exact HasDerivAt.comp_of_tower x Complex.hasDerivAt_exp_real_smul_I hf
 
-lemma Real.deriv_fourierChar {x : ℝ} : deriv (fun x : ℝ => Real.fourierChar[x]) x = 2 * π * I * Real.fourierChar[x] := by
-  rw [← fderiv_deriv]
-  rw [Real.fderiv_fourierChar_apply]
-  simp
-  ring_nf
-
-lemma Real.hasDerivAt_fourierChar {x : ℝ} : HasDerivAt (fun x : ℝ => Real.fourierChar[x]) (2 * π * I * Real.fourierChar[x]) x := by
-  rw [← deriv_fourierChar]
-  exact Real.differentiable_fourierChar.differentiableAt.hasDerivAt
-
 end RealFourier

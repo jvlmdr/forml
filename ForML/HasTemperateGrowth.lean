@@ -500,17 +500,31 @@ lemma HasTemperateGrowth.prod (s : Finset ι) {f : ι → E → ℝ}
     simp only [Finset.mem_insert, forall_eq_or_imp] at hf
     simpa [Finset.prod_insert hi] using HasTemperateGrowth.mul hf.1 (IH hf.2)
 
-lemma hasTemperateGrowth_continuousMultilinearMap_mkPiField [Fintype ι] :
-    HasTemperateGrowth (fun x ↦ ContinuousMultilinearMap.mkPiField ℝ ι (G := F) x) := by
-  simp only [← ContinuousMultilinearMap.mkPiFieldL_apply]
+lemma hasTemperateGrowth_continuousMultilinearMap_mkPiRing [Fintype ι] :
+    HasTemperateGrowth (fun x ↦ ContinuousMultilinearMap.mkPiRing ℝ ι (M := F) x) := by
+  simp only [← ContinuousMultilinearMap.mkPiRingL_apply]
   exact hasTemperateGrowth_clm _
 
-lemma hasTemperateGrowth_continuousMultilinearMap_mkPiField_apply [Fintype ι] (x : F) :
-    HasTemperateGrowth (fun m ↦ (ContinuousMultilinearMap.mkPiField ℝ ι x) m) := by
-  simp only [ContinuousMultilinearMap.mkPiField_apply]
+lemma hasTemperateGrowth_continuousMultilinearMap_mkPiRing_apply [Fintype ι] (x : F) :
+    HasTemperateGrowth (fun m ↦ (ContinuousMultilinearMap.mkPiRing ℝ ι x) m) := by
+  simp only [ContinuousMultilinearMap.mkPiRing_apply]
   refine .smul_const ?_ x
   exact .prod Finset.univ fun i _ ↦ hasTemperateGrowth_clm (.proj (φ := fun _ ↦ ℝ) i)
 
 end Prod
+
+section Pow
+
+lemma hasTemperateGrowth_pow (n : ℕ) : HasTemperateGrowth fun x : ℝ ↦ x ^ n := by
+  refine And.intro (contDiff_id.pow n) ?_
+  intro i
+  use n - i, Nat.descFactorial n i
+  intro x
+  rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv, iteratedDeriv_pow]
+  rw [norm_mul, IsROrC.norm_natCast]
+  refine mul_le_mul_of_nonneg_left ?_ (Nat.cast_nonneg _)
+  simp [pow_le_pow_left]
+
+end Pow
 
 end Function  -- namespace

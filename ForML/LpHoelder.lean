@@ -9,18 +9,18 @@ open scoped Real NNReal ENNReal
 
 namespace ENNReal
 
--- def IsConjugateExponent (p q : ℝ≥0∞) : Prop := p⁻¹ + q⁻¹ = 1
+-- def IsConjExponent (p q : ℝ≥0∞) : Prop := p⁻¹ + q⁻¹ = 1
 
 -- Use `(1 - p⁻¹)⁻¹` rather than `p / (p - 1)` to avoid `∞ / (∞ - 1)`.
-noncomputable def conjugateExponent (p : ℝ≥0∞) : ℝ≥0∞ := (1 - p⁻¹)⁻¹
+noncomputable def conjExponent (p : ℝ≥0∞) : ℝ≥0∞ := (1 - p⁻¹)⁻¹
 
 variable {p q : ℝ≥0∞}
 
-lemma one_le_conjugateExponent : 1 ≤ conjugateExponent p := by
-  simp [conjugateExponent]
+lemma one_le_conjExponent : 1 ≤ conjExponent p := by
+  simp [conjExponent]
 
-instance one_le_conjugateExponent' : Fact (1 ≤ conjugateExponent p) :=
-  ⟨one_le_conjugateExponent⟩
+instance one_le_conjExponent' : Fact (1 ≤ conjExponent p) :=
+  ⟨one_le_conjExponent⟩
 
 @[simp]
 lemma sub_right_eq_self {a b : ℝ≥0∞} (ha : a ≠ 0) (ha' : a ≠ ⊤) : a - b = a ↔ b = 0 := by
@@ -36,11 +36,11 @@ lemma sub_right_eq_self {a b : ℝ≥0∞} (ha : a ≠ 0) (ha' : a ≠ ⊤) : a 
     simp [h]
 
 -- Uses `sub_right_eq_self` with `a = 1`.
-lemma conjugateExponent_eq_one : conjugateExponent p = 1 ↔ p = ⊤ := by
-  simp [conjugateExponent, inv_eq_iff_eq_inv]
+lemma conjExponent_eq_one : conjExponent p = 1 ↔ p = ⊤ := by
+  simp [conjExponent, inv_eq_iff_eq_inv]
 
-lemma conjugateExponent_eq_top (hp : 1 ≤ p) : conjugateExponent p = ⊤ ↔ p = 1 := by
-  simp [conjugateExponent]
+lemma conjExponent_eq_top (hp : 1 ≤ p) : conjExponent p = ⊤ ↔ p = 1 := by
+  rw [conjExponent, inv_eq_top, tsub_eq_zero_iff_le, ENNReal.one_le_inv]
   exact LE.le.le_iff_eq hp
 
 lemma one_le_of_conjugate (hpq : p⁻¹ + q⁻¹ = 1) : 1 ≤ p := by
@@ -51,12 +51,12 @@ lemma one_le_of_conjugate' (hpq : p⁻¹ + q⁻¹ = 1) : 1 ≤ q := by
   rw [add_comm] at hpq
   exact one_le_of_conjugate hpq
 
-/-- Like `Real.IsConjugateExponent.toReal` for `ℝ≥0∞`.
+/-- Like `Real.IsConjExponent.toReal` for `ℝ≥0∞`.
 
 Note that it is not necessary to include `1 ≤ p` in the definition `p⁻¹ + q⁻¹ = 1`.
 -/
-lemma conjugate_iff : (1 ≤ p ∧ q = conjugateExponent p) ↔ p⁻¹ + q⁻¹ = 1 := by
-  rw [conjugateExponent]
+lemma conjugate_iff : (1 ≤ p ∧ q = conjExponent p) ↔ p⁻¹ + q⁻¹ = 1 := by
+  rw [conjExponent]
   rw [← inv_eq_iff_eq_inv]
   refine Iff.intro ?_ ?_
   . simp
@@ -74,8 +74,8 @@ lemma conjugate_iff : (1 ≤ p ∧ q = conjugateExponent p) ↔ p⁻¹ + q⁻¹ 
     simp
     exact lt_of_lt_of_le zero_lt_one hp
 
-lemma conjugate_conjugateExponent (hp : 1 ≤ p) : p⁻¹ + (conjugateExponent p)⁻¹ = 1 := by
-  simp [conjugateExponent]
+lemma conjugate_conjExponent (hp : 1 ≤ p) : p⁻¹ + (conjExponent p)⁻¹ = 1 := by
+  simp [conjExponent]
   simp [add_tsub_cancel_iff_le]
   exact hp
 
@@ -123,9 +123,9 @@ lemma conjugate_cases (h : p⁻¹ + q⁻¹ = 1) :
           exact lt_of_lt_of_le zero_lt_one (one_le_of_conjugate' h)
         . rwa [ENNReal.inv_ne_zero]
 
-/-- Obtain `Real.IsConjugateExponent` when both `p` and `q` are finite. -/
+/-- Obtain `Real.IsConjExponent` when both `p` and `q` are finite. -/
 lemma isConjugateExponent_toReal (hpq : p⁻¹ + q⁻¹ = 1) (hp : p ≠ ⊤) (hq : q ≠ ⊤) :
-    Real.IsConjugateExponent (p.toNNReal) (q.toNNReal) := by
+    Real.IsConjExponent (p.toNNReal) (q.toNNReal) := by
   cases conjugate_cases hpq with
   | inr hpq =>
     simp at *
@@ -144,12 +144,10 @@ lemma isConjugateExponent_toReal (hpq : p⁻¹ + q⁻¹ = 1) (hp : p ≠ ⊤) (h
     cases p with | none => contradiction | some p =>
     cases q with | none => contradiction | some q =>
     simp at *
-    refine Real.IsConjugateExponent.mk ?_ ?_
+    constructor
     . norm_cast
     . rw [← ENNReal.coe_inv hp', ← ENNReal.coe_inv hq'] at hpq
       norm_cast at hpq
-      simp
-      norm_cast
 
 end ENNReal
 

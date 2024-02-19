@@ -1,3 +1,4 @@
+import Mathlib.Analysis.Calculus.Deriv.Pow
 import Mathlib.Analysis.Distribution.SchwartzSpace
 import Mathlib.Analysis.NormedSpace.BoundedLinearMaps
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
@@ -105,6 +106,17 @@ lemma iteratedFDeriv_const_smul_apply' {i : ℕ} {a : 𝕜'} {f : E → F} {x : 
   rfl
 
 end IteratedFDeriv
+
+
+namespace SchwartzMap
+
+variable {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F]
+
+theorem iteratedDeriv_eq_iteratedPDeriv {n : ℕ} {f : 𝓢(ℝ, F)} {x : ℝ} :
+    iteratedDeriv n f x = iteratedPDeriv ℝ (fun _ ↦ 1 : Fin n → ℝ) f x := by
+  simp [iteratedDeriv_eq_iteratedFDeriv, iteratedPDeriv_eq_iteratedFDeriv]
+
+end SchwartzMap
 
 
 section DerivComp
@@ -291,6 +303,113 @@ variable {𝕜 : Type*} [IsROrC 𝕜] {E : Type*} [NormedAddCommGroup E] [InnerP
 variable (𝕜)
 
 theorem norm_innerSL_le_one : ‖innerSL 𝕜 (E := E)‖ ≤ 1 := by
-  simp [ContinuousLinearMap.op_norm_le_iff]
+  simp [ContinuousLinearMap.opNorm_le_iff]
 
 end LinearInner
+
+
+namespace Function
+
+variable {α : Type*} {β : α → Type*} [∀ i, Monoid (β i)]
+
+@[to_additive]
+theorem update_mul_update [DecidableEq α] {a : α} {f : (a : α) → (β a)} {b : β a} :
+    Function.update f a 1 * Function.update (fun _ ↦ 1) a b = Function.update f a b :=
+  eq_update_iff.mpr ⟨by simp, fun i h ↦ by simp [h]⟩
+
+end Function
+
+
+namespace ContinuousMultilinearMap
+
+variable {R : Type*}
+variable {ι : Type*}
+variable {M₁ : ι → Type*} [(i : ι) → AddCommMonoid (M₁ i)] [(i : ι) → TopologicalSpace (M₁ i)]
+variable {M₂ : Type*} [AddCommMonoid M₂] [TopologicalSpace M₂]
+variable [Semiring R] [(i : ι) → Module R (M₁ i)] [Module R M₂]
+
+theorem toContinuousLinearMap_apply [DecidableEq ι]
+    (f : ContinuousMultilinearMap R M₁ M₂) (x : (i : ι) → M₁ i) (i : ι) (m : M₁ i) :
+    f.toContinuousLinearMap x i m = f (Function.update x i m) :=
+  rfl
+
+end ContinuousMultilinearMap
+
+
+section Pow
+
+variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
+
+theorem iteratedDeriv_pow {i n : ℕ} :
+    iteratedDeriv i (fun x : 𝕜 ↦ x ^ n) = fun x : 𝕜 ↦ n.descFactorial i * x ^ (n - i) := by
+  induction i with
+  | zero => simp
+  | succ i IH =>
+    rw [iteratedDeriv_succ, IH]
+    funext x
+    rw [deriv_const_mul _ (differentiableAt_pow (n - i)), deriv_pow]
+    rw [← mul_assoc]
+    refine congrArg₂ _ ?_ ?_
+    · simp [mul_comm (↑(n - i) : 𝕜)]
+    · simp [Nat.sub_succ']
+
+end Pow
+
+
+section IteratedDeriv
+
+variable {𝕜 𝕜' : Type*} [NontriviallyNormedField 𝕜] [NontriviallyNormedField 𝕜']
+  {F : Type*} [NormedAddCommGroup F] [NormedSpace 𝕜 F] [NormedSpace 𝕜' F] [SMulCommClass 𝕜 𝕜' F]
+
+@[simp]
+theorem iteratedDeriv_neg' {i : ℕ} {f : 𝕜 → F} {x : 𝕜} (hf : ContDiff 𝕜 i f) :
+    iteratedDeriv i (fun x => -f x) x = -iteratedDeriv i f x := by
+  simpa [iteratedDerivWithin_univ] using
+    iteratedDerivWithin_neg' (Set.mem_univ x) uniqueDiffOn_univ (contDiffOn_univ.mpr hf)
+
+@[simp]
+theorem iteratedDeriv_const_smul' {i : ℕ} {c : 𝕜'} {f : 𝕜 → F} {x : 𝕜} (hf : ContDiff 𝕜 i f) :
+    iteratedDeriv i (fun x => c • f x) x = c • iteratedDeriv i f x := by
+  simp only [iteratedDeriv_eq_iteratedFDeriv, ← Pi.smul_def]
+  rw [iteratedFDeriv_const_smul_apply hf]
+  simp
+
+end IteratedDeriv
+
+
+section Integrable
+
+variable {α β : Type*} {m : MeasurableSpace α} {μ : Measure α} [NormedAddCommGroup β]
+  {𝕜 : Type*} [NormedAddCommGroup 𝕜] [SMulZeroClass 𝕜 β] [BoundedSMul 𝕜 β]
+
+theorem MeasureTheory.Integrable.smul' (c : 𝕜) {f : α → β} (hf : Integrable f μ) :
+    Integrable (fun x ↦ c • f x) μ :=
+  MeasureTheory.Integrable.smul c hf
+
+end Integrable
+
+
+namespace SchwartzMap
+
+variable {E F : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [NormedAddCommGroup F]
+  [NormedSpace ℝ F]
+
+-- theorem isBigO_cocompact_pow_inv (f : 𝓢(E, F)) [ProperSpace E] (k : ℕ) :
+--     f =O[Filter.cocompact E] fun x : E ↦ (‖x‖ ^ k)⁻¹ := by
+--   simpa using isBigO_cocompact_zpow f (-(k : ℤ))
+
+-- theorem tendsto_cocompact_zero (f : 𝓢(E, F)) [ProperSpace E] :
+--     Filter.Tendsto f (Filter.cocompact E) (nhds 0) := by
+--   rw [tendsto_zero_iff_norm_tendsto_zero]
+--   have := isBigO_cocompact_pow_inv f 1
+--   simp only [Asymptotics.isBigO_iff, pow_one, norm_inv, norm_norm] at this
+--   rcases this with ⟨c, hc⟩
+--   exact tendsto_of_tendsto_of_tendsto_of_le_of_le'
+--     tendsto_const_nhds
+--     (by simpa using (tendsto_inv_atTop_zero.comp tendsto_norm_cocompact_atTop).const_mul c)
+--     (Filter.eventually_of_forall (fun x ↦ norm_nonneg (f x))) hc
+
+theorem tendsto_cocompact_zero (f : 𝓢(E, F)) [ProperSpace E] :
+    Filter.Tendsto f (Filter.cocompact E) (nhds 0) := zero_at_infty f
+
+end SchwartzMap
